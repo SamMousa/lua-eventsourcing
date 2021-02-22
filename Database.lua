@@ -25,12 +25,39 @@ function Database.Table:new(data)
     return o
 end
 
+function Database.Table:Serialize()
+    local lines = {}
+    local columns = {}
+    for _, v in pairs(self._data) do
+        for k, _ in pairs(v) do
+            columns[k] = 1
+        end
+    end
+
+    local sortedColumns = {}
+    for k, _ in pairs(columns) do
+        table.insert(sortedColumns, k)
+    end
+    table.sort(sortedColumns)
+
+    table.insert(lines, table.concat(sortedColumns, '~'))
+
+    for k, v in pairs(self._data) do
+        local row = {}
+        table.insert(row, k)
+        for _, col in ipairs(sortedColumns) do
+            table.insert(row, v[col] or "")
+        end
+        table.insert(lines, table.concat(row, "~"))
+    end
+    printtable(lines)
+
+    return table.concat(lines, "\n")
+
+end
+
 function Database.Table:AddIndex(key)
     self._indexes[key] = Database.CreateIndex(self._data, key)
-
-    for k, v in ipairs(self._indexes[key]) do
-        print(key, k, v[0])
-    end
 end
 
 function Database.Table:SearchRange(min, max, key)

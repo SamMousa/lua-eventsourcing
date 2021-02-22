@@ -61,11 +61,11 @@ table:AddIndex("a")
 table:AddIndex("b")
 
 table:InsertRecordWithKey('test', {b = 15, ts = 13});
-table:UpsertRecordWithKey('test', {b = 15, ts = 13});
+table:UpsertRecordWithKey('test', {b = 15, a =6,  ts = 13});
 local searchResult = table:SearchRange(10, 15, "b");
 
-
-printtable(searchResult, 0)
+print(table:Serialize())
+--printtable(searchResult, 0)
 --
 --print(Database.UUID())
 --print(Database.UUID())
