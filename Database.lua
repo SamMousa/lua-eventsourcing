@@ -45,6 +45,7 @@ function Database.Index:new(key, data)
     return o
 end
 
+-- Searches for the first index that has value >= to the given value
 function Database.Index:BinarySearch(value)
     local min = 1
     local max = #self._entries
@@ -54,21 +55,22 @@ function Database.Index:BinarySearch(value)
         return nil
     end
 
-    -- Floor division
-    local test = (max + min) // 2
+    local iterations = 0
 
-    while (max > min) do
+    while (min < max) do
+        test = math.floor((max + min) / 2)
         if self._entries[test][key] >= value then
             max = test
-            test = (max + min) // 2
         else
-            min = test
-            test = (max + min) // 2 + 1
+            min = test + 1
         end
+        iterations = iterations + 1
+
     end
 
     return max
 end
+
 
 function Database.Index:SearchValue(value)
     local index = self:BinarySearch(value)
@@ -78,6 +80,16 @@ function Database.Index:SearchValue(value)
     end
 
     return nil
+end
+
+function Database.Index:SearchAllByValue(value)
+    local index = self:BinarySearch(value)
+    local result = {}
+    while self._entries[index][self._key] == value do
+        table.insert(result, self._entries[index])
+        index = index + 1
+    end
+    return result
 end
 
 function Database.Index:SearchRange(min, max)
@@ -121,8 +133,6 @@ function Database.Table:Serialize()
         end
         table.insert(lines, table.concat(row, "~"))
     end
-    printtable(lines)
-
     return table.concat(lines, "\n")
 
 end
@@ -148,6 +158,13 @@ function Database.Table:SearchValue(value, key)
     return self._indexes[key]:SearchValue(value)
 end
 
+function Database.Table:SearchAllByValue(value, key)
+    if (self._indexes[key] == nil) then
+        error("Index not defined: " .. key, 2);
+        return
+    end
+    return self._indexes[key]:SearchAllByValue(value)
+end
 
 function Database.Table:KeyExists(key)
     return self._data[key] ~= nil
@@ -192,64 +209,8 @@ Database.CreateIndex = function(data, key)
     return index
 end
 
---[[
-  Search an index, return all records within the range (inclusive)
-  The index is assumed to be ordered, so we will stop searching as soon as we pass max.
---]]
-Database.SearchRange = function(min, max, index)
-    local result = {}
-    local key = Database.BinarySearch(min, index)
-    if (key == nil) then
-        return result
-    end
-    while(key <= #index and index[key][0] <= max) do
-        table.insert(result, index[key][1])
-        key = key + 1
-    end
-
-
-    return result
-end
-
---[[
-  Binary search an index, this value will return the first index that is >= the search value
---]]
-Database.BinarySearch = function(value, index)
-    local min = 1
-    local max = #index._entries
-
-    if (max == 0) then
-        return nil
-    end
-
-    -- Floor division
-    local test = (max + min) // 2
-
-    while (max > min) do
-        print(min, max, test, index.entries[test], value)
-        if index[test][0] >= value then
-            max = test
-            test = (max + min) // 2
-        else
-            min = test
-            test = (max + min) // 2 + 1
-        end
-    end
-
-    print("Min", min, "Max", max)
-    return max
-end
-
-Database.RetrieveByKeys = function(data, keys)
-    local result = {}
-    for _, k in ipairs(keys) do
-        result[k] = data[k]
-    end
-    return result
-end
-
 Database.UUID = function()
-    local random = math.random(0, 1000000)
+    local random = string.random(10)
     local ts = Database.time()
     return string.format('{%s-%s}', ts, random)
 end

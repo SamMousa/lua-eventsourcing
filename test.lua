@@ -1,5 +1,43 @@
 
 require "./Database"
+require "./wow"
+
+math.randomseed(GetTime())
+
+Profile = {}
+function Profile:start(name)
+    Profile[name] = os.clock()
+end
+
+function Profile:stop(name)
+    local elapsed = os.clock() - Profile[name]
+    print(string.format(name .. ": elapsed time: %.2f\n", elapsed))
+end
+
+
+
+function string.random(length, alternativeCharset)
+    local charset = alternativeCharset or "qwertyuiopasdfghjklzxcvbnmQWERTYUIOPASDFGHJKLZXCVBNM1234567890"
+    local charsetLength = string.len(charset)
+    local result = ""
+    while string.len(result) < length do
+        local i = math.random(1, charsetLength)
+        result = result .. charset.sub(charset, i, i)
+    end
+    return result
+end
+
+function string.guid()
+    local hex = '0123456789abcdef'
+    return table.concat({
+        string.random(8, hex),
+        string.random(4, hex),
+        string.random(4, hex),
+        string.random(4, hex),
+        string.random(12, hex),
+    }, '-')
+end
+
 function printtable(table, indent)
 
     indent = indent or 0;
@@ -40,31 +78,38 @@ function printtable(table, indent)
     print(string.rep('  ', indent)..'}');
 end
 
-
 data = {}
+Profile:start('Creating data')
+for i = 1, 1000000 do
+    local uuid = Database.UUID()
+    data[uuid] = {
+        player = string.guid(),
+        a = 15,
+        i = i,
+        ts = Database.time()
+    }
+end
 
-data.test1 =  {a = 16, ts = 11213, player = "a9847aa3-ca65-4246-8614-2cd0436f0ed9"};
-data.test2 =  {a = 14, ts = 12313, player = "a9847aa3-ca65-4246-8614-2cd0436f0ed9"};
-data.test3 =  {b = 12, ts = 12113};
-data.test4 =  {a = 11, ts = 12313};
-data.test5 =  {a = 12, ts = 12113};
-data.test6 =  {a = 11, ts = 12313};
-
-
+Profile:stop('Creating data')
+Profile:start('Creating table')
 local table = Database.Table:new(data);
+local guid = string.guid()
+table:InsertRecordWithUUID({b = 15, ts = 13, player = guid});
+local uuid = table:InsertRecordWithUUID({b = 15, ts = 13, player = guid});
+Profile:start('Creating indices')
 table:AddIndex("a")
-table:AddIndex("b")
-
-local uuid = table:InsertRecordWithUUID({b = 15, ts = 13});
-table:AddIndex("a")
-table:AddIndex("b")
+table:AddIndex("i")
 table:AddIndex("player");
+Profile:stop('Creating indices')
+Profile:stop('Creating table')
 
-printtable(table:SearchValue("a9847aa3-ca65-4246-8614-2cd0436f0ed9", "player"))
+Profile:start('Search 1')
+printtable(table:SearchAllByValue(guid, "player"))
+Profile:stop('Search 1')
 
 table:InsertRecordWithKey('test', {b = 15, ts = 13, dkpmutation = -5, note="test123"});
 table:UpsertRecordWithKey('test', {b = 15, a =6,  ts = 13, note="cool stuff"});
-local searchResult = table:SearchRange(10, 15, "b");
+--local searchResult = table:SearchRange(10, 15, "b");
 
 --print(table:Serialize())
 --printtable(searchResult, 0)
@@ -79,7 +124,7 @@ local searchResult = table:SearchRange(10, 15, "b");
 --print(Database.UUID())
 --print(Database.UUID())
 --print(Database.UUID())
---print(Database.UUID())
+print(Database.UUID())
 
 
 --local records = Database.RetrieveByKeys(data, searchResult)
