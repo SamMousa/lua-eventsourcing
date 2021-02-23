@@ -1,7 +1,8 @@
 
 if Database == nil then
     Database = {
-        Table = {}
+        Table = {},
+        Index = {}
     }
 
 end
@@ -23,6 +24,76 @@ function Database.Table:new(data)
     o._indexes = {}
     o._data = data
     return o
+end
+
+function Database.Index:new(key, data)
+    o = {}
+    setmetatable(o, self)
+    self.__index = self
+
+    o._entries = {}
+    o._key = key
+
+    for _, tableRow in pairs(data) do
+        if tableRow[key] ~= nil then
+            table.insert(o._entries, tableRow)
+        end
+    end
+    table.sort(o._entries, function(a, b)
+        return a[key] < b[key];
+    end)
+    return o
+end
+
+function Database.Index:BinarySearch(value)
+    local min = 1
+    local max = #self._entries
+
+    local key = self._key
+    if (max == 0) then
+        return nil
+    end
+
+    -- Floor division
+    local test = (max + min) // 2
+
+    while (max > min) do
+        if self._entries[test][key] >= value then
+            max = test
+            test = (max + min) // 2
+        else
+            min = test
+            test = (max + min) // 2 + 1
+        end
+    end
+
+    return max
+end
+
+function Database.Index:SearchValue(value)
+    local index = self:BinarySearch(value)
+    local entry = self._entries[index]
+    if (entry[self._key] == value) then
+        return entry
+    end
+
+    return nil
+end
+
+function Database.Index:SearchRange(min, max)
+
+    local result = {}
+    local key = self:BinarySearch(min)
+    if (key == nil) then
+        return result
+    end
+    while(key <= #self._entries and self._entries[key][self._key] <= max) do
+        table.insert(result, self._entries[key])
+        key = key + 1
+    end
+
+
+    return result
 end
 
 function Database.Table:Serialize()
@@ -57,7 +128,8 @@ function Database.Table:Serialize()
 end
 
 function Database.Table:AddIndex(key)
-    self._indexes[key] = Database.CreateIndex(self._data, key)
+    local data = self._data
+    self._indexes[key] = Database.Index:new(key, data)
 end
 
 function Database.Table:SearchRange(min, max, key)
@@ -65,8 +137,17 @@ function Database.Table:SearchRange(min, max, key)
         error("Index not defined: " .. key, 2);
         return
     end
-    return Database.RetrieveByKeys(self._data, Database.SearchRange(min, max, self._indexes[key]))
+    return self._indexes[key]:SearchRange(min, max)
 end
+
+function Database.Table:SearchValue(value, key)
+    if (self._indexes[key] == nil) then
+        error("Index not defined: " .. key, 2);
+        return
+    end
+    return self._indexes[key]:SearchValue(value)
+end
+
 
 function Database.Table:KeyExists(key)
     return self._data[key] ~= nil
@@ -96,18 +177,17 @@ Database.CreateTable = function(data)
 end
 
 Database.CreateIndex = function(data, key)
-    local index = {}
-    for uniqueId, tableRow in pairs(data) do
+    local index = {
+        field = key,
+        entries = {}
+    }
+    for tableRow in pairs(data) do
         if tableRow[key] ~= nil then
-            local indexEntry = {}
-            indexEntry[0] = tableRow[key]
-            indexEntry[1] = uniqueId
-
-            table.insert(index, indexEntry)
+            table.insert(index.entries, tableRow)
         end
     end
-    table.sort(index, function(a, b)
-        return a[0] < b[0];
+    table.sort(index.entries, function(a, b)
+        return a[key] < b[key];
     end)
     return index
 end
@@ -129,8 +209,6 @@ Database.SearchRange = function(min, max, index)
 
 
     return result
-
-
 end
 
 --[[
@@ -138,7 +216,7 @@ end
 --]]
 Database.BinarySearch = function(value, index)
     local min = 1
-    local max = #index
+    local max = #index._entries
 
     if (max == 0) then
         return nil
@@ -148,7 +226,7 @@ Database.BinarySearch = function(value, index)
     local test = (max + min) // 2
 
     while (max > min) do
-        print(min, max, test, index[test][0], value)
+        print(min, max, test, index.entries[test], value)
         if index[test][0] >= value then
             max = test
             test = (max + min) // 2
