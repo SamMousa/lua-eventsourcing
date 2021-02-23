@@ -7,8 +7,8 @@ if Database == nil then
 
 end
 
-Database.time = function()
-    if (os.time ~= nil) then
+function Database.time()
+    if (os ~= nill and os.time ~= nil) then
         return os.time()
     elseif time ~= nil then
         return time()
@@ -189,11 +189,11 @@ function Database.Table:InsertRecordWithUUID(value)
     return self:InsertRecordWithKey(key, value)
 end
 
-Database.CreateTable = function(data)
+function Database.CreateTable(data)
     return Database.Table:new(data)
 end
 
-Database.CreateIndex = function(data, key)
+function Database.CreateIndex(data, key)
     local index = {
         field = key,
         entries = {}
@@ -209,8 +209,67 @@ Database.CreateIndex = function(data, key)
     return index
 end
 
-Database.UUID = function()
-    local random = string.random(10)
-    local ts = Database.time()
-    return string.format('{%s-%s}', ts, random)
+--[[
+  Search an index, return all records within the range (inclusive)
+  The index is assumed to be ordered, so we will stop searching as soon as we pass max.
+--]]
+function Database.SearchRange(min, max, index)
+    local result = {}
+    local key = Database.BinarySearch(min, index)
+    if (key == nil) then
+        return result
+    end
+    while(key <= #index and index[key][0] <= max) do
+        table.insert(result, index[key][1])
+        key = key + 1
+    end
+
+
+    return result
+
+
+end
+
+--[[
+  Binary search an index, this value will return the first index that is >= the search value
+--]]
+function Database.BinarySearch(value, index)
+    local min = 1
+    local max = #index
+
+    if (max == 0) then
+        return nil
+    end
+
+    -- Floor division
+    local test = math.floor((max + min) / 2)
+
+    while (max > min) do
+        print(min, max, test, index[test][0], value)
+        if index[test][0] >= value then
+            max = test
+            test = math.floor((max + min) / 2)
+        else
+            min = test
+            test = math.ceil((max + min) / 2)
+        end
+    end
+
+    print("Min", min, "Max", max)
+    return max
+end
+
+function Database.RetrieveByKeys(data, keys)
+    local result = {}
+    for _, k in ipairs(keys) do
+        result[k] = data[k]
+    end
+    return result
+end
+
+function Database.UUID()
+    local random = math.random(1, 2^31 - 1)
+    local ts = Database.time() - 1577836861
+
+    return string.format('%08x%08x', ts, random)
 end

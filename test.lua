@@ -1,8 +1,18 @@
+if (GetTime == nil) then
+    require "./Database"
+    require "./wow"
+end
+error('disabled')
+if (math.randomseed ~= nil) then
 
-require "./Database"
-require "./wow"
+    math.randomseed(GetTime())
+end
 
-math.randomseed(GetTime())
+if (os == nil) then
+    os = {
+        clock =  GetTimePreciseSec
+    }
+end
 
 Profile = {}
 function Profile:start(name)
@@ -15,9 +25,9 @@ function Profile:stop(name)
 end
 
 
-
+local defaultCharset = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ"
 function string.random(length, alternativeCharset)
-    local charset = alternativeCharset or "qwertyuiopasdfghjklzxcvbnmQWERTYUIOPASDFGHJKLZXCVBNM1234567890"
+    local charset = alternativeCharset or defaultCharset
     local charsetLength = string.len(charset)
     local result = ""
     while string.len(result) < length do
@@ -80,12 +90,17 @@ end
 
 data = {}
 Profile:start('Creating data')
-for i = 1, 1000000 do
+for i = 1, 1000 * 1000 do
     local uuid = Database.UUID()
+--    data[uuid] = {
+--        player = string.guid(),
+--        a = 15,
+--        i = i,
+--        ts = Database.time()
+--    }
     data[uuid] = {
-        player = string.guid(),
-        a = 15,
-        i = i,
+        server = math.random(9999),
+        player = math.random(2147483647),
         ts = Database.time()
     }
 end
@@ -93,7 +108,8 @@ end
 Profile:stop('Creating data')
 Profile:start('Creating table')
 local table = Database.Table:new(data);
-local guid = string.guid()
+globalTable = table
+local guid = math.random(1, 2^31 - 1)
 table:InsertRecordWithUUID({b = 15, ts = 13, player = guid});
 local uuid = table:InsertRecordWithUUID({b = 15, ts = 13, player = guid});
 Profile:start('Creating indices')
