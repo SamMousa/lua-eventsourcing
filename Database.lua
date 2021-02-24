@@ -1,8 +1,8 @@
-
 if Database == nil then
     Database = {
         Table = {},
-        Index = {}
+        Index = {},
+        HashIndex = {}
     }
 
 end
@@ -43,6 +43,39 @@ function Database.Index:new(key, data)
         return a[key] < b[key];
     end)
     return o
+end
+
+function Database.HashIndex:new(key, data)
+    o = {}
+    setmetatable(o, self)
+    self.__index = self
+
+    o._entries = {}
+    o._key = key
+
+    for _, tableRow in pairs(data) do
+        if tableRow[key] ~= nil then
+            if (o._entries[tableRow[key]] == nil) then
+                o._entries[tableRow[key]] = {}
+            end
+            table.insert(o._entries[tableRow[key]], tableRow)
+        end
+    end
+    return o
+end
+
+function Database.HashIndex:SearchValue(value)
+    if self._entries[value] ~= nil then
+        return self._entries[value][1]
+    end
+    return nil
+end
+
+function Database.HashIndex:SearchAllByValue(value)
+    if self._entries[value] ~= nil then
+        return self._entries[value]
+    end
+    return {}
 end
 
 -- Searches for the first index that has value >= to the given value
@@ -142,10 +175,18 @@ function Database.Table:AddIndex(key)
     self._indexes[key] = Database.Index:new(key, data)
 end
 
+function Database.Table:AddHashIndex(key)
+    local data = self._data
+    self._indexes[key] = Database.HashIndex:new(key, data)
+end
+
 function Database.Table:SearchRange(min, max, key)
     if (self._indexes[key] == nil) then
         error("Index not defined: " .. key, 2);
         return
+    end
+    if (self._indexes[key].SearchRange == nil) then
+        error("Index does not support SearchRange")
     end
     return self._indexes[key]:SearchRange(min, max)
 end
@@ -155,6 +196,9 @@ function Database.Table:SearchValue(value, key)
         error("Index not defined: " .. key, 2);
         return
     end
+    if (self._indexes[key].SearchValue == nil) then
+        error("Index does not support SearchValue")
+    end
     return self._indexes[key]:SearchValue(value)
 end
 
@@ -162,6 +206,9 @@ function Database.Table:SearchAllByValue(value, key)
     if (self._indexes[key] == nil) then
         error("Index not defined: " .. key, 2);
         return
+    end
+    if (self._indexes[key].SearchAllByValue == nil) then
+        error("Index does not support SearchAllByValue")
     end
     return self._indexes[key]:SearchAllByValue(value)
 end
@@ -269,7 +316,21 @@ end
 
 function Database.UUID()
     local random = math.random(1, 2^31 - 1)
-    local ts = Database.time() - 1577836861
+    local ts = Database.time()
 
-    return string.format('%08x%08x', ts, random)
+    local hex = string.format('%08x%08x', ts, random)
+    return hex
+    --return hex:fromhex():toBase64()
+end
+
+function string.fromhex(str)
+    return (str:gsub('..', function (cc)
+        return string.char(tonumber(cc, 16))
+    end))
+end
+
+function string.tohex(str)
+    return (str:gsub('.', function (c)
+        return string.format('%02X', string.byte(c))
+    end))
 end

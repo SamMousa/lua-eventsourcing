@@ -1,8 +1,9 @@
 if (GetTime == nil) then
     require "./Database"
     require "./wow"
+    require "./string"
 end
-error('disabled')
+--error('disabled')
 if (math.randomseed ~= nil) then
 
     math.randomseed(GetTime())
@@ -25,28 +26,7 @@ function Profile:stop(name)
 end
 
 
-local defaultCharset = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ"
-function string.random(length, alternativeCharset)
-    local charset = alternativeCharset or defaultCharset
-    local charsetLength = string.len(charset)
-    local result = ""
-    while string.len(result) < length do
-        local i = math.random(1, charsetLength)
-        result = result .. charset.sub(charset, i, i)
-    end
-    return result
-end
 
-function string.guid()
-    local hex = '0123456789abcdef'
-    return table.concat({
-        string.random(8, hex),
-        string.random(4, hex),
-        string.random(4, hex),
-        string.random(4, hex),
-        string.random(12, hex),
-    }, '-')
-end
 
 function printtable(table, indent)
 
@@ -89,6 +69,16 @@ function printtable(table, indent)
 end
 
 data = {}
+
+guids = {}
+-- Create 1000 guids (think 1 database containing 1000 players)
+for i = 1, 1000 do
+    local server = math.random(5)
+    local player = math.random(2 ^ 31 - 1)
+    table.insert(guids, string.format('%08x%08x', server, player))
+end
+
+
 Profile:start('Creating data')
 for i = 1, 1000 * 1000 do
     local uuid = Database.UUID()
@@ -98,9 +88,9 @@ for i = 1, 1000 * 1000 do
 --        i = i,
 --        ts = Database.time()
 --    }
+    local player = math.random(1000)
     data[uuid] = {
-        server = math.random(9999),
-        player = math.random(2147483647),
+        player = guids[player],
         ts = Database.time()
     }
 end
@@ -109,18 +99,16 @@ Profile:stop('Creating data')
 Profile:start('Creating table')
 local table = Database.Table:new(data);
 globalTable = table
-local guid = math.random(1, 2^31 - 1)
-table:InsertRecordWithUUID({b = 15, ts = 13, player = guid});
-local uuid = table:InsertRecordWithUUID({b = 15, ts = 13, player = guid});
 Profile:start('Creating indices')
-table:AddIndex("a")
-table:AddIndex("i")
-table:AddIndex("player");
+--table:AddIndex("a")
+--table:AddIndex("i")
+--table:AddHashIndex("player");
 Profile:stop('Creating indices')
 Profile:stop('Creating table')
 
 Profile:start('Search 1')
-printtable(table:SearchAllByValue(guid, "player"))
+local guid = guids[math.random(1000)]
+--printtable(table:SearchAllByValue(guid, "player"))
 Profile:stop('Search 1')
 
 table:InsertRecordWithKey('test', {b = 15, ts = 13, dkpmutation = -5, note="test123"});
