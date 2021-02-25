@@ -44,6 +44,10 @@ function SortedList:insert(element)
 
 end
 
+function SortedList:cast(table)
+    -- Find which meta table we should use
+    setmetatable(table, SortedList)
+end
 
 
 
