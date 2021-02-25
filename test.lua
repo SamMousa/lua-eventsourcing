@@ -2,10 +2,13 @@ if (GetTime == nil) then
     require "./Database"
     require "./wow"
     require "./string"
+    require "./SortedList"
+    require "./LogEntry"
+    require "bit"
+
 end
 --error('disabled')
 if (math.randomseed ~= nil) then
-
     math.randomseed(GetTime())
 end
 
@@ -25,112 +28,126 @@ function Profile:stop(name)
     print(string.format(name .. ": elapsed time: %.2f\n", elapsed))
 end
 
-
-
-
-function printtable(table, indent)
-
-    indent = indent or 0;
-
-    local keys = {};
-
-    for k in pairs(table) do
-        keys[#keys+1] = k;
-    end
-
-    print(string.rep('  ', indent)..'{');
-    indent = indent + 1;
-    for k, v in pairs(table) do
-
-        local key = k;
-        if (type(key) == 'string') then
-            if not (string.match(key, '^[A-Za-z_][0-9A-Za-z_]*$')) then
-                key = "['"..key.."']";
-            end
-        elseif (type(key) == 'number') then
-            key = "["..key.."]";
-        end
-
-        if (type(v) == 'table') then
-            if (next(v)) then
-                print(string.rep('  ', indent), tostring(key), "=");
-                printtable(v, indent);
-            else
-                print(string.rep('  ', indent), tostring(key), "= {},");
-            end
-        elseif (type(v) == 'string') then
-            print(string.rep('  ', indent), tostring(key), " = ", "'"..v.."'");
-        else
-            print(string.rep('  ', indent), tostring(key), " = ", tostring(v));
-        end
-    end
-    indent = indent - 1;
-    print(string.rep('  ', indent)..'}');
-end
-
-data = {}
-
 guids = {}
--- Create 1000 guids (think 1 database containing 1000 players)
-for i = 1, 1000 do
-    local server = math.random(5)
+-- Create 500 guids (think 1 database containing 500 players)
+for i = 1, 500 do
+    local server = math.random(5) * 1000 + 312
     local player = math.random(2 ^ 31 - 1)
-    table.insert(guids, string.format('%08x%08x', server, player))
+    table.insert(guids, string.format('%04d%08x', server, player))
 end
 
+if BigDataSet == nil then
+    Profile:start('Creating data')
+    local sortedList = LogEntry:sortedList()
+    for i = 1, 1000 * 1000 do
+        -- First 50 players are managers
+        local creator = guids[math.random(1, 50)]
+        if i % 2 == 0 then
+            creator = 'bob'
+        else
+            creator = 'anna'
+        end
+        local entry = PlayerAmountEntry:new(guids[math.random(#guids)], math.random(10), creator)
+        local copy = {}
+        for k, v in pairs(entry) do
+            copy[k] = v
+        end
+        sortedList:insert(copy)
+        if i % 1000 == 0 then
+            io.write('.')
+            io.flush()
+        end
+    end
+    print('done')
 
-Profile:start('Creating data')
-for i = 1, 1000 * 1000 do
-    local uuid = Database.UUID()
---    data[uuid] = {
---        player = string.guid(),
---        a = 15,
---        i = i,
---        ts = Database.time()
---    }
-    local player = math.random(1000)
-    data[uuid] = {
-        player = guids[player],
-        ts = Database.time()
-    }
+    Profile:stop('Creating data')
+
+    BigDataSet = sortedList
+else
+    sortedList = BigDataSet
 end
-
-Profile:stop('Creating data')
-Profile:start('Creating table')
-local table = Database.Table:new(data);
-globalTable = table
-Profile:start('Creating indices')
---table:AddIndex("a")
---table:AddIndex("i")
---table:AddHashIndex("player");
-Profile:stop('Creating indices')
-Profile:stop('Creating table')
-
-Profile:start('Search 1')
-local guid = guids[math.random(1000)]
---printtable(table:SearchAllByValue(guid, "player"))
-Profile:stop('Search 1')
-
-table:InsertRecordWithKey('test', {b = 15, ts = 13, dkpmutation = -5, note="test123"});
-table:UpsertRecordWithKey('test', {b = 15, a =6,  ts = 13, note="cool stuff"});
---local searchResult = table:SearchRange(10, 15, "b");
-
---print(table:Serialize())
---printtable(searchResult, 0)
---
---print(Database.UUID())
---print(Database.UUID())
---print(Database.UUID())
---print(Database.UUID())
---print(Database.UUID())
---os.execute("sleep 3")
---print(Database.UUID())
---print(Database.UUID())
---print(Database.UUID())
---print(Database.UUID())
-print(Database.UUID())
 
 
 --local records = Database.RetrieveByKeys(data, searchResult)
 --
 --printtable(records);
+
+--local log = LogEntry:new()
+
+
+
+--print(string.format("%08x", 51))
+--local adler32 = Util.IntegerChecksumCoroutine()
+--local week = sortedList:entries()[1]:weekNumber()
+--local hashes = {}
+--print('Start week', week)
+--print('End week', math.floor(sortedList:entries()[#sortedList:entries()]:time() / 604800))
+--Profile:start('Hashing')
+--for k, v in ipairs(sortedList:entries()) do
+--    if (v:weekNumber() > week)  then
+--        week = v:weekNumber()
+--        adler32 = Util.IntegerChecksumCoroutine()
+--    end
+--    coroutine.resume(adler32, v.time)
+--    _, hashes[week] = coroutine.resume(adler32, v.rand)
+--    if (k % 1000 == 0) then
+--        io.write('x')
+--        io.flush()
+--    end
+--end
+--Profile:stop('Hashing')
+
+local state = {
+    playerLogCount = 0,
+    balances = {
+
+    },
+    dkp_per_creator = {
+
+    }
+}
+
+local mutator = function(logEntry, state)
+    LogEntry:cast(logEntry)
+    if (logEntry.class == nil) then
+        Util.DumpTable(logEntry)
+        error("No class member on logEntry")
+    end
+    if (type(logEntry.className) ~= 'function') then
+        error("missing function")
+    end
+    local class = logEntry:class()
+    if  class == 'PLE' then
+        state.playerLogCount = state.playerLogCount + 1
+        return true
+    elseif class == 'PAE' then
+        local player = logEntry:player()
+        local creator = logEntry:creator()
+        state.balances[player] = (state.balances[player] or 0) + logEntry:amount()
+        state.dkp_per_creator[creator] = (state.dkp_per_creator[creator] or 0) + logEntry:amount()
+        return true
+    end
+
+    return false
+end
+
+Profile:start('playing event log')
+for i, v in ipairs(sortedList:entries()) do
+    if mutator(v, state) then
+        --Util.DumpTable(state)
+    end
+end
+Profile:stop('playing event log')
+--Util.DumpTable(state)
+
+-- Verify state
+totalbalance = 0
+for k, v in pairs(state.balances) do
+    totalbalance = totalbalance + v
+end
+
+totalcreated = 0
+for k, v in pairs(state.dkp_per_creator) do
+    totalcreated = totalcreated + v
+end
+print(totalbalance, totalcreated)
