@@ -4,7 +4,11 @@
 ## Version: 1.0
 
 ##SavedVariables: BigDataSet
+string.lua
+Util.lua
 Communication.lua
 Database.lua
+SortedList.lua
+LogEntry.lua
 
 test.lua
