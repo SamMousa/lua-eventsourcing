@@ -10,7 +10,7 @@ if SortedList == nil then
     SortedList = {}
 end
 
-function SortedList:new(data, sorter)
+function SortedList:new(data, compare)
     o = {}
     setmetatable(o, self)
     self.__index = self
@@ -18,7 +18,7 @@ function SortedList:new(data, sorter)
     if type(o._entries) ~= 'table' then
         error('Entries not initialized to a table')
     end
-    o._sorter = sorter
+    o._compare = compare
     return o
 end
 
@@ -28,14 +28,14 @@ end
 
 function SortedList:insert(element)
     -- since we expect elements to be mostly appended, we do a shortcut check.
-    if (#self._entries == 0 or self._sorter(self._entries[#self._entries], element)) then
+    if (#self._entries == 0 or self._compare(self._entries[#self._entries], element)) then
         table.insert(self._entries, element)
         return
     end
 
 
 
-    local position = Util.BinarySearch(self._entries, element, self._sorter)
+    local position = Util.BinarySearch(self._entries, element, self._compare)
     if position == nil then
         table.insert(self._entries, element)
     else
@@ -45,7 +45,7 @@ function SortedList:insert(element)
 end
 
 function SortedList:cast(table)
-    -- Find which meta table we should use
+
     setmetatable(table, SortedList)
 end
 
