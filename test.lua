@@ -4,8 +4,8 @@ if (GetTime == nil) then
     require "./string"
     require "./SortedList"
     require "./LogEntry"
-    require "bit"
-
+    require "./source/PlayerAmountEntry"
+    require "./source/PercentageDecayEntry"
 end
 --error('disabled')
 if (math.randomseed ~= nil) then
@@ -28,6 +28,7 @@ function Profile:stop(name)
     print(string.format(name .. ": elapsed time: %.2f\n", elapsed))
 end
 
+function launchTest()
 guids = {}
 -- Create 500 guids (think 1 database containing 500 players)
 for i = 1, 500 do
@@ -38,8 +39,8 @@ end
 
 if BigDataSet == nil then
     Profile:start('Creating data')
-    local sortedList = LogEntry:sortedList()
-    for i = 1, 1000 * 1000 do
+    sortedList = LogEntry:sortedList()
+    for i = 1, 10 * 1000 do
         -- First 50 players are managers
         local creator = guids[math.random(1, 50)]
         if i % 2 == 0 then
@@ -47,7 +48,12 @@ if BigDataSet == nil then
         else
             creator = 'anna'
         end
-        local entry = PlayerAmountEntry:new(guids[math.random(#guids)], math.random(10), creator)
+        local players = {}
+        for i = 1, math.random(10) do
+            players[#players + 1] = guids[math.random(#guids)]
+        end
+
+        local entry = PlayerAmountEntry:new(players, math.random(10), creator)
         local copy = {}
         for k, v in pairs(entry) do
             copy[k] = v
@@ -97,48 +103,21 @@ end
 --end
 --Profile:stop('Hashing')
 
-local state = {
-    playerLogCount = 0,
-    balances = {
 
-    },
-    dkp_per_creator = {
-
-    }
-}
-
-local mutator = function(logEntry, state)
-    LogEntry:cast(logEntry)
-    if (logEntry.class == nil) then
-        Util.DumpTable(logEntry)
-        error("No class member on logEntry")
+local function recalculateState(list)
+    local state = {}
+    Profile:start('playing event log')
+    for _, logEntry in ipairs(list:entries()) do
+        LogEntry:cast(logEntry)
+        logEntry:applyToState(state)
     end
-    if (type(logEntry.className) ~= 'function') then
-        error("missing function")
-    end
-    local class = logEntry:class()
-    if  class == 'PLE' then
-        state.playerLogCount = state.playerLogCount + 1
-        return true
-    elseif class == 'PAE' then
-        local player = logEntry:player()
-        local creator = logEntry:creator()
-        state.balances[player] = (state.balances[player] or 0) + logEntry:amount()
-        state.dkp_per_creator[creator] = (state.dkp_per_creator[creator] or 0) + logEntry:amount()
-        return true
-    end
-
-    return false
+    Profile:stop('playing event log')
+    return state
 end
 
-Profile:start('playing event log')
-for i, v in ipairs(sortedList:entries()) do
-    if mutator(v, state) then
-        --Util.DumpTable(state)
-    end
-end
-Profile:stop('playing event log')
---Util.DumpTable(state)
+
+state = recalculateState(sortedList)
+Util.DumpTable(state)
 
 -- Verify state
 totalbalance = 0
@@ -151,3 +130,15 @@ for k, v in pairs(state.dkp_per_creator) do
     totalcreated = totalcreated + v
 end
 print(totalbalance, totalcreated)
+
+    --Util.DumpTable(state)
+
+    local decay = PercentageDecayEntry:new(5, 'sam')
+    sortedList:insert(decay)
+    state = recalculateState(sortedList)
+    print(state.totalDecay)
+end
+
+if (GetServerTime == nil) then
+    launchTest()
+end
