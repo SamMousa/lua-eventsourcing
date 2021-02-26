@@ -6,6 +6,7 @@ if (GetTime == nil) then
     require "./LogEntry"
     require "./source/PlayerAmountEntry"
     require "./source/PercentageDecayEntry"
+    require "./StateManager"
 end
 --error('disabled')
 if (math.randomseed ~= nil) then
@@ -103,20 +104,21 @@ end
 --end
 --Profile:stop('Hashing')
 
-
-local function recalculateState(list)
+    local stateManager = StateManager:new(sortedList)
     local state = {}
-    Profile:start('playing event log')
-    for _, logEntry in ipairs(list:entries()) do
-        LogEntry:cast(logEntry)
-        logEntry:applyToState(state)
-    end
-    Profile:stop('playing event log')
-    return state
-end
+    stateManager:registerHandler(PlayerAmountEntry, function(entry)
+        local creator = entry:creator()
+        state.dkp_per_creator = state.dkp_per_creator or {}
+        state.balances = state.balances or {}
+
+        for _, player in ipairs(entry:players()) do
+            state.balances[player] = (state.balances[player] or 0) + entry:amount()
+            state.dkp_per_creator[creator] = (state.dkp_per_creator[creator] or 0) + entry:amount()
+        end
+    end)
+    stateManager:recalculateState()
 
 
-state = recalculateState(sortedList)
 Util.DumpTable(state)
 
 -- Verify state
@@ -135,7 +137,9 @@ print(totalbalance, totalcreated)
 
     local decay = PercentageDecayEntry:new(5, 'sam')
     sortedList:insert(decay)
-    state = recalculateState(sortedList)
+
+    print(stateManager:lag())
+    --state = recalculateState(sortedList)
     print(state.totalDecay)
 end
 

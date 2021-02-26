@@ -1,7 +1,5 @@
 if LogEntry == nil then
     LogEntry = {
-        TYPES = {}
-
     }
 end
 
@@ -13,48 +11,21 @@ end
 ]]--
 LogEntry.__index = LogEntry
 LogEntry._cls = 'LE'
-LogEntry.TYPES[LogEntry._cls] = LogEntry
 
+function LogEntry:extend(identifier)
+    local o = self:new()
+    o.__index = o
+    o._cls = identifier
+    return o
+end
 
-
-function LogEntry:__new()
+function LogEntry:new()
     local o = {}
     setmetatable(o, self)
     o.cls = self._cls
     o.t = Util.time()
     o.r = math.random(2 ^ 31- 1)
     return o
-end
-
--- Register a subclass
-function LogEntry:register(cls, mutator)
-    local o = self:__new()
-    o.__index = o
-    o._cls = cls
-    o.super = LogEntry.new
-    o._mutator = mutator
-    LogEntry.TYPES[cls] = o
-    return o
-end
-
-function LogEntry:new(team, creator)
-    local o = LogEntry.__new(self)
-    o.t = team
-    o.cr = creator
-    return o
-end
-
-function LogEntry:creator()
-    return self.cr
-end
-
-
-function LogEntry:cast(table)
-    -- Find which meta table we should use
-    if LogEntry.TYPES[table.cls] == nil then
-        error("Unknown class: " .. table.cls)
-    end
-    setmetatable(table, LogEntry.TYPES[table.cls])
 end
 
 function LogEntry:class()
@@ -72,12 +43,4 @@ end
 -- Return a sorted list set up for log entries
 function LogEntry.sortedList(data)
     return  SortedList:new(data or {}, Util.CreateMultiFieldSorter('t', 'r'))
-end
-
-function LogEntry:applyToState(state)
-    if self._mutator == nil then
-        Util.DumpTable(self)
-        error("No mutator found")
-    end
-    self._mutator(state, self)
 end
