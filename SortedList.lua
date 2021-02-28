@@ -10,6 +10,11 @@ if SortedList == nil then
     SortedList = {}
 end
 
+--[[
+ Create a new sorted list
+ @param data the initial data, this must be already sorted or things will break
+ @param compare the comparison function to use. This function should return -1 if a < b, 0 if a == b and 1 if a > b.
+]]--
 function SortedList:new(data, compare)
     o = {}
     setmetatable(o, self)
@@ -33,7 +38,23 @@ function SortedList:insert(element)
         return
     end
 
+    local position = Util.BinarySearch(self._entries, element, self._compare)
+    if position == nil then
+        table.insert(self._entries, element)
+    else
+        table.insert(self._entries, position, element)
+    end
+end
 
+--[[
+  Insert an element into the list, if it doesn't exist already. Uniqueness is determined via the
+  compare function only
+]]--
+function SortedList:uniqeInsert(element)
+    if (#self._entries == 0 or self._compare(self._entries[#self._entries], element)) then
+        table.insert(self._entries, element)
+        return
+    end
 
     local position = Util.BinarySearch(self._entries, element, self._compare)
     if position == nil then
@@ -41,12 +62,15 @@ function SortedList:insert(element)
     else
         table.insert(self._entries, position, element)
     end
-
 end
 
-function SortedList:cast(table)
-
+-- We don't return a value since we are change the table, this makes it clear for consuming code
+function SortedList:cast(table, compare)
+    if (table._entries == nil) then
+        error("This is not a sorted list table")
+    end
     setmetatable(table, SortedList)
+    table._compare = compare
 end
 
 

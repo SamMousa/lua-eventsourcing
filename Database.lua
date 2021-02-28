@@ -17,7 +17,7 @@ function Database.time()
 end
 
 function Database.Table:new(data)
-    o = {}
+    local o = {}
     setmetatable(o, self)
     self.__index = self
 
@@ -27,7 +27,7 @@ function Database.Table:new(data)
 end
 
 function Database.Index:new(key, data)
-    o = {}
+    local o = {}
     setmetatable(o, self)
     self.__index = self
 
@@ -39,14 +39,15 @@ function Database.Index:new(key, data)
             table.insert(o._entries, tableRow)
         end
     end
+    print("indexing " .. key)
     table.sort(o._entries, function(a, b)
-        return a[key] < b[key];
+        return a[key] < b[key]
     end)
     return o
 end
 
 function Database.HashIndex:new(key, data)
-    o = {}
+    local o = {}
     setmetatable(o, self)
     self.__index = self
 
