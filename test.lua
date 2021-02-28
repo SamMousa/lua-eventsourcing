@@ -29,7 +29,14 @@ function Profile:stop(name)
     print(string.format(name .. ": elapsed time: %.2f\n", elapsed))
 end
 
-function launchTest()
+StartEntry = LogEntry:extend('START', true)
+function StartEntry:new()
+    local o = LogEntry.new(self)
+    o.t = 1
+    return o
+end
+
+function createTestData()
     guids = {}
     -- Create 500 guids (think 1 database containing 500 players)
     for i = 1, 500 do
@@ -38,50 +45,48 @@ function launchTest()
         table.insert(guids, string.format('%04d%08x', server, player))
     end
 
-    StartEntry = LogEntry:extend('START', true)
-    function StartEntry:new()
-        local o = LogEntry.new(self)
-        o.t = 1
-        return o
-    end
 
-    if BigDataSet == nil then
-        Profile:start('Creating data')
-        sortedList = LogEntry.sortedList()
-        local start = StartEntry:new()
-        sortedList:insert(start)
-        for i = 1, 10 * 1000 do
-            -- First 50 players are managers
-            local creator = guids[math.random(1, 50)]
-            if i % 2 == 0 then
-                creator = 'bob'
-            else
-                creator = 'anna'
-            end
-            local players = {}
-            for i = 1, math.random(10) do
-                players[#players + 1] = guids[math.random(#guids)]
-            end
+    Profile:start('Creating data')
+    sortedList = LogEntry.sortedList()
 
-            local entry = PlayerAmountEntry:new(players, math.random(10), creator)
-            local copy = {}
-            for k, v in pairs(entry) do
-                copy[k] = v
-            end
-            sortedList:insert(copy)
-            if i % 1000 == 0 then
-                print('.')
-            end
+    local start = StartEntry:new()
+    sortedList:uniqueInsert(start)
+    for i = 1, 10 * 1000 do
+        -- First 50 players are managers
+        local creator = guids[math.random(1, 50)]
+        if i % 2 == 0 then
+            creator = 'bob'
+        else
+            creator = 'anna'
         end
-        print('done')
+        local players = {}
+        for i = 1, math.random(10) do
+            players[#players + 1] = guids[math.random(#guids)]
+        end
 
-        Profile:stop('Creating data')
+        local entry = PlayerAmountEntry:new(players, math.random(10), creator)
+        local copy = {}
+        for k, v in pairs(entry) do
+            copy[k] = v
+        end
+        sortedList:uniqueInsert(copy)
+        if i % 1000 == 0 then
+            print('.')
+        end
+    end
+    print('done')
 
-        BigDataSet = sortedList
-    else
+    Profile:stop('Creating data')
+
+    BigDataSet = sortedList
+end
+
+function launchTest()
+
+
+
         print('reconstructing list from saved variables', #BigDataSet._entries)
         sortedList = LogEntry.sortedList(BigDataSet._entries)
-    end
 
 
     --local records = Database.RetrieveByKeys(data, searchResult)
@@ -168,8 +173,8 @@ else
         if (BigDataSet ~= nil) then
             ticker:Cancel()
             launchTest()
-            stateManager:setBatchSize(100)
-            stateManager:setUpdateInterval(100)
+            stateManager:setBatchSize(10)
+            stateManager:setUpdateInterval(1000)
             ListSync = LibStub("ListSync-1.0")
             listSync = ListSync:new('test', sortedList)
             exampleEntry = PlayerAmountEntry:new({UnitGUID("player")}, math.random(100), "sam")

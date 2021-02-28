@@ -56,5 +56,9 @@ end
 
 -- Return a sorted list set up for log entries
 function LogEntry.sortedList(data)
-    return SortedList:new(data or {}, Util.CreateMultiFieldSorter('t', 'r'), true)
+    local r = SortedList:new(data or {}, Util.CreateMultiFieldSorter('t', 'r'), true)
+    if type(r.uniqueInsert) ~= 'function' then
+        error("Error creating sorted list but doesn't have function")
+    end
+    return r
 end

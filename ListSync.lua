@@ -22,7 +22,7 @@ function ListSync:new(prefix, sortedList)
         error("Prefix must be a non empty string of length <=7")
     end
 
-    if type(sortedList.uniqeInsert) ~= "function" then
+    if type(sortedList.uniqueInsert) ~= "function" then
         error("Not a valid sorted list")
     end
 
@@ -34,15 +34,16 @@ function ListSync:new(prefix, sortedList)
 
     self._list = sortedList
 
-    self._prefix = string.format("ListSync", self.listCount)
-    print("Registering listener for list sync")
+    self._prefix = "ListSync" .. prefix
+    print("Registering listener for list sync, prefix ", self._prefix, self._prefix .. 'B')
+
     aceComm:RegisterComm(self._prefix, function(_, message, distribution, sender)
         -- single updates
         local result, message = aceSerializer:Deserialize(message)
         if (not result) then
             error("failed to deserialize message")
         end
-        if (sortedList:uniqeInsert(message)) then
+        if (sortedList:uniqueInsert(message)) then
             print(string.format("Inserting unique event from sender [%s] via [%s] into list", sender, distribution))
         else
             print(string.format("Skipped inserting non-unique event from sender [%s] via [%s] into list", sender, distribution))
@@ -56,7 +57,7 @@ function ListSync:new(prefix, sortedList)
         end
         print(string.format("Received %d entries from sender [%s] via [%s]", #messages, sender, distribution))
         for _, v in ipairs(messages) do
-            if (sortedList:uniqeInsert(v)) then
+            if (sortedList:uniqueInsert(v)) then
                 print(string.format("Inserting unique event from sender [%s] via [%s] into list", sender, distribution))
             else
                 print(string.format("Skipped inserting non-unique event from sender [%s] via [%s] into list", sender, distribution))

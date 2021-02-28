@@ -19,6 +19,7 @@ function SortedList:new(data, compare, unique)
     o = {}
     setmetatable(o, self)
     self.__index = self
+
     o._entries  = data or {}
     if type(o._entries) ~= 'table' then
         error('Entries not initialized to a table')
@@ -28,7 +29,6 @@ function SortedList:new(data, compare, unique)
     end
     o._compare = compare
     o._unique = unique or false
-    print(unique)
     return o
 end
 
@@ -64,7 +64,7 @@ end
 
   @returns bool indicating whether a new element was inserted
 ]]--
-function SortedList:uniqeInsert(element)
+function SortedList:uniqueInsert(element)
     if (#self._entries == 0 or self._compare(self._entries[#self._entries], element) == -1) then
         table.insert(self._entries, element)
         return true
@@ -81,14 +81,16 @@ function SortedList:uniqeInsert(element)
     return true
 end
 
+
+
 -- We don't return a value since we are change the table, this makes it clear for consuming code
-function SortedList:cast(table, compare)
-    if (table._entries == nil) then
-        error("This is not a sorted list table")
-    end
-    setmetatable(table, SortedList)
-    table._compare = compare
-end
+--function SortedList:cast(table, compare)
+--    if (table._entries == nil) then
+--        error("This is not a sorted list table")
+--    end
+--    setmetatable(table, SortedList)
+--    table._compare = compare
+--end
 
 
 
@@ -131,7 +133,7 @@ function SortedList.TestUniqueInsert()
             print("Test FAIL, compare not correct")
         end
 
-        sortedList:uniqeInsert(v.insert)
+        sortedList:uniqueInsert(v.insert)
 
 
         if not Util.IsSorted(sortedList:entries(), compare) or sortedList:length() - startLength > 1 then
@@ -197,7 +199,3 @@ function SortedList.TestInsert()
 
 
 end
-
-
---SortedList.TestInsert()
---SortedList.TestUniqueInsert()

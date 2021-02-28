@@ -94,6 +94,7 @@ function StateManager:setUpdateInterval(interval)
         -- work in synchronous mode
         self.async = false
         self:catchUp()
+        return
     end
     self.ticker = C_Timer.NewTicker(interval / 1000, function()
         local t = GetTimePreciseSec()
