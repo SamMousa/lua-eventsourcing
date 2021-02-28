@@ -4,17 +4,6 @@
 
 PercentageDecayEntry = LogEntry:extend('PDE')
 
---        function(state, entry)
---    local creator = entry:creator()
---    for player, balance in pairs(state.balances) do
---        if (balance > 0) then
---            state.balances[player] = entry:applyDecay(balance)
---            state.totalDecay = (state.totalDecay or 0) + (balance - state.balances[player])
---        end
---    end
---
---end)
-
 function PercentageDecayEntry:new(percentage, creator, team)
     local o = LogEntry.new(self);
     o.cr = creator

@@ -62,7 +62,7 @@ end
 function SortedList:uniqeInsert(element)
     if (#self._entries == 0 or self._compare(self._entries[#self._entries], element) == -1) then
         table.insert(self._entries, element)
-        return
+        return true
     end
 
     local position = Util.BinarySearch(self._entries, element, self._compare)

@@ -2,7 +2,11 @@
     This event models an amount of points given to a set of players on a specific ledger
 ]]--
 
-SnapshotEntry = LogEntry:register('SNAP', function(state, entry)
+function SnapshotEntry:extend(identifier)
+    return LogEntry:extend(identifier, true)
+end
+
+SnapshotEntry = LogEntry:extend('SNAP', function(state, entry)
     if table.wipe ~= nil then
         -- wow specific table wipe
         table.wipe(state)

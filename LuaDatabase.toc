@@ -10,5 +10,8 @@ Communication.lua
 Database.lua
 SortedList.lua
 LogEntry.lua
-
+source/PlayerAmountEntry.lua
+source/PercentageDecayEntry.lua
+StateManager.lua
+ListSync.lua
 test.lua

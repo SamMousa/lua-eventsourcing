@@ -203,10 +203,12 @@ function Util.IntegerChecksumCoroutine()
         local a = 1
         local b = 0
         local b1, b2, b3, b4
-
         local next = number
         while(true) do
-            b1, b2, b3, b4 = Util.IntegerToBytes(next)
+            if type(next) ~= 'number' then
+                error("Given element is not a number")
+            end
+            b1, b2, b3, b4 = Util.IntegerToBytes(math.floor(next))
             a = (a + b1)
             b = (b + a)
             a = (a + b2)
@@ -218,6 +220,7 @@ function Util.IntegerChecksumCoroutine()
             b = (b + a) % 65521
 
             next = coroutine.yield(b * 65536 + a)
+
         end
     end)
 end
