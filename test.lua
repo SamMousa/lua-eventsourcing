@@ -95,7 +95,7 @@ function launchTest()
         balances = {}
     }
     stateManager:addStateChangedListener(function(stateManager)
-        local mydkp = state.balances['sam'] or 0;
+        local mydkp = state.balances[UnitGUID("player")] or 0;
         updateTestFrameStatus(
             string.format("Lag: %d", stateManager:lag()),
             string.format("Dkp: %d",  mydkp),
@@ -168,12 +168,12 @@ else
         if (BigDataSet ~= nil) then
             ticker:Cancel()
             launchTest()
-            stateManager:setBatchSize(10)
-            stateManager:setUpdateInterval(500)
+            stateManager:setBatchSize(100)
+            stateManager:setUpdateInterval(100)
             ListSync = LibStub("ListSync-1.0")
             listSync = ListSync:new('test', sortedList)
-            exampleEntry = PlayerAmountEntry:new({"sam"}, math.random(100), "sam")
-            print("type of sortedlist", type(sortedList.uniqeInsert))
+            exampleEntry = PlayerAmountEntry:new({UnitGUID("player")}, math.random(100), "sam")
+            print("Data load")
         end
     end)
 

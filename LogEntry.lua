@@ -56,5 +56,5 @@ end
 
 -- Return a sorted list set up for log entries
 function LogEntry.sortedList(data)
-    return  SortedList:new(data or {}, Util.CreateMultiFieldSorter('t', 'r'))
+    return SortedList:new(data or {}, Util.CreateMultiFieldSorter('t', 'r'), true)
 end

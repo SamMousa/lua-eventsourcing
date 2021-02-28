@@ -15,7 +15,7 @@ end
  @param data the initial data, this must be already sorted or things will break
  @param compare the comparison function to use. This function should return -1 if a < b, 0 if a == b and 1 if a > b.
 ]]--
-function SortedList:new(data, compare)
+function SortedList:new(data, compare, unique)
     o = {}
     setmetatable(o, self)
     self.__index = self
@@ -27,6 +27,8 @@ function SortedList:new(data, compare)
         error('Argument missing: compare function')
     end
     o._compare = compare
+    o._unique = unique or false
+    print(unique)
     return o
 end
 
@@ -39,6 +41,9 @@ function SortedList:length()
 end
 
 function SortedList:insert(element)
+    if (self._unique) then
+        error("This list only supports uniqueInsert")
+    end
     -- since we expect elements to be mostly appended, we do a shortcut check.
     if (#self._entries == 0 or self._compare(self._entries[#self._entries], element) == -1) then
         table.insert(self._entries, element)
