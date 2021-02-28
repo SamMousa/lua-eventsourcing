@@ -7,7 +7,7 @@ function Util.BinarySearch(list, value, comparator, min, max)
     if type(list) ~= 'table' then
         error("Argument 1 must be a table")
     end
-    local result
+
     if min == nil then
         min = 1
         max = #list
@@ -19,14 +19,11 @@ function Util.BinarySearch(list, value, comparator, min, max)
 
     local test = math.floor((max + min) / 2)
 
-    if comparator == nil then
-        result = list[test] < value
-    else
-        result = comparator(list[test], value)
-    end
+    local result = comparator(list[test], value)
 
 
-    if result then
+
+    if result == -1 then
         -- Tested element < value, solution not in left side
         return Util.BinarySearch(list, value, comparator, test + 1, max)
     elseif test == min then
@@ -38,14 +35,11 @@ function Util.BinarySearch(list, value, comparator, min, max)
 end
 
 function Util.IsSorted(list, comparator)
-    if comparator == nil then
-        comparator = function(a, b)
-            return a < b
-        end
+    if (comparator == nil) then
+        error("Missing argument comparator")
     end
-
     for i = 1, #list - 1  do
-        if not comparator(list[i], list[i+1]) then
+        if comparator(list[i], list[i+1]) == 1 then
             return false
         end
     end
@@ -94,7 +88,13 @@ end
 
 function Util.CreateFieldSorter(field)
     return function(a, b)
-        return a[field] < b[field]
+        if a[field] < b[field] then
+            return -1
+        elseif a[field] > b[field] then
+            return 1
+        else
+            return 0
+        end
     end
 end
 
@@ -106,9 +106,17 @@ end
 function Util.CreateMultiFieldSorter(field1, field2)
     return function(a, b)
         if a[field1] == b[field1] then
-            return a[field2] < b[field2]
-        else
-            return a[field1] < b[field1]
+            if a[field2] < b[field2] then
+                return -1
+            elseif a[field2] > b[field2] then
+                return 1
+            else
+                return 0
+            end
+        elseif a[field1] < b[field1] then
+            return -1
+        elseif a[field1] > b[field1] then
+            return 1
         end
     end
 end
@@ -116,7 +124,7 @@ end
 
 function Util.InvertSorter(sorter)
     return function(a, b)
-        return not sorter(a, b)
+        return -1 * sorter(a, b)
     end
 end
 
@@ -140,6 +148,15 @@ end
 
 
 function Util.TestBinarySearch()
+    local comparator = function(a, b)
+        if a < b then
+            return -1
+        elseif a > b then
+            return 1
+        else
+            return 0
+        end
+    end
     local cases = {
         { list = { 1, 2}, search = 2, expected = 2 },
         { list = { 1, 2, 3}, search = 2, expected = 2 },
@@ -152,7 +169,7 @@ function Util.TestBinarySearch()
     }
 
     for _, v in ipairs(cases) do
-        local result = Util.BinarySearch(v.list, v.search)
+        local result = Util.BinarySearch(v.list, v.search, comparator)
         if result ~= v.expected then
             print("Test FAIL: [", table.concat(v.list, ', '), "], search: ", v.search, " expected: ", v.expected, " got: ", result)
         else
@@ -204,3 +221,5 @@ function Util.IntegerChecksumCoroutine()
         end
     end)
 end
+
+--Util.TestBinarySearch()
