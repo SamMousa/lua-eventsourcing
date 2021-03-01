@@ -8,7 +8,7 @@ if Database == nil then
 end
 
 function Database.time()
-    if (os ~= nill and os.time ~= nil) then
+    if (os ~= nil and os.time ~= nil) then
         return os.time()
     elseif time ~= nil then
         return time()

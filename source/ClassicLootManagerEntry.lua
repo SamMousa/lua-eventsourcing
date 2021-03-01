@@ -5,7 +5,7 @@
 
 
 ClassicLootManagerEntry = LogEntry:register('CLM', function(state, entry)
-    if type(CLM.Interconnect.Ledger.onUpdate) == nill then
+    if type(CLM.Interconnect.Ledger.onUpdate) == nil then
         error("Couldn't call interconnect, CLM not loaded?")
     end
     -- Call CLM interconnect.
