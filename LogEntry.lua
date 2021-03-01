@@ -71,7 +71,7 @@ function LogEntry:toList()
     local keys = {}
     for k, v in pairs(self) do
         if (k ~= 'cls') then
-            table.insert(k)
+            table.insert(keys, k)
         end
     end
     table.sort(keys)

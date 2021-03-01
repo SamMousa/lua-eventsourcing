@@ -14,7 +14,8 @@ if not ListSync then
 return end
 
 local aceComm =  LibStub("AceComm-3.0")
-local aceSerializer =  LibStub("AceSerializer-3.0")
+local libDeflate = LibStub("LibDeflate")
+local libSerialize =  LibStub("LibSerialize")
 
 function ListSync:new(prefix, sortedList)
     if (prefix == nil or type(prefix) ~= 'string' or string.len(prefix) > 7 or string.len(prefix) < 1) then
@@ -73,6 +74,18 @@ function ListSync:transmitViaGuild(entry)
 end
 
 function ListSync:fullSyncViaWhisper(target)
-    local data = aceSerializer:Serialize(self._list:entries())
-    aceComm:SendCommMessage(self._prefix .. 'B', data, "WHISPER", target, "BULK")
+    local data = {}
+    for _, v in ipairs(self._list:entries()) do
+        table.insert(data, v:toList())
+    end
+    local smartSerialized = libSerialize:Serialize(data)
+    local dumbSerialized = libSerialize:Serialize(self._list:entries())
+    local smartCompressed = libDeflate:CompressDeflate(smartSerialized)
+    local dumbCompressed = libDeflate:CompressDeflate(dumbSerialized)
+    print(string.format("Size for smart serialize: %d, compressed: %d", string.len(smartSerialized), string.len(smartCompressed)))
+    print(string.format("Size for dumb serialize: %d, compressed: %d", string.len(dumbSerialized), string.len(dumbCompressed)))
+
+    aceComm:SendCommMessage(self._prefix .. 'B', data, "WHISPER", target, "BULK", function(_, sent, total)
+        print(string.format("Sent %d of %d", sent, total))
+    end)
 end

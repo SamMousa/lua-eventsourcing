@@ -40,18 +40,18 @@ function createTestData()
     guids = {}
     -- Create 500 guids (think 1 database containing 500 players)
     for i = 1, 500 do
-        local server = math.random(5) * 1000 + 312
         local player = math.random(2 ^ 31 - 1)
-        table.insert(guids, string.format('%04d%08x', server, player))
+        table.insert(guids, string.format('%08x', player))
     end
 
 
     Profile:start('Creating data')
-    sortedList = LogEntry.sortedList()
+    sortedList = sortedList or LogEntry.sortedList()
+    table.wipe(sortedList:entries())
 
     local start = StartEntry:new()
     sortedList:uniqueInsert(start)
-    for i = 1, 10 * 1000 do
+    for i = 1, 1 * 400 do
         -- First 50 players are managers
         local creator = guids[math.random(1, 50)]
         if i % 2 == 0 then
@@ -106,7 +106,7 @@ function launchTest()
             string.format("Dkp: %d",  mydkp),
             string.format("Batchsize: %d", stateManager:getBatchSize()),
             string.format("Interval (measured): %d", stateManager:getUpdateInterval()),
-            ""
+            string.format("Log length: %d", sortedList:length())
         )
     end)
     stateManager:registerHandler(StartEntry, function(entry)
