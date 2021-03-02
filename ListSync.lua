@@ -4,15 +4,10 @@
 
 local ListSync, _ = LibStub:NewLibrary("EventSourcing/ListSync", 1)
 if not ListSync then
-    print("ListSync already loaded")
-
 return end
-function ListSync:new(stateManager, sendAddonMessage, registerReceiveHandler)
-    if (prefix == nil or type(prefix) ~= 'string' or string.len(prefix) > 7 or string.len(prefix) < 1) then
-        print(prefix)
-        error("Prefix must be a non empty string of length <=7")
-    end
 
+StateManager = LibStub("EventSourcing/StateManager")
+function ListSync:new(stateManager, sendAddonMessage, registerReceiveHandler)
     if getmetatable(stateManager) ~= StateManager then
         error("stateManager must be an instance of StateManager")
     end
@@ -26,12 +21,8 @@ function ListSync:new(stateManager, sendAddonMessage, registerReceiveHandler)
 
     self._stateManager = stateManager
 
-    self._prefix = "ListSync" .. prefix
-    print("Registering listener for list sync, prefix ", self._prefix, self._prefix .. 'B')
-
     registerReceiveHandler(function(_, message, distribution, sender)
         -- our messages have a type, this way we can use 1 prefix for all communication
-        -- and we don't even know the prefix
         if message.type == "fullSync" then
             -- handle full sync
 
@@ -58,6 +49,7 @@ end
 function ListSync:fullSyncViaWhisper(target)
     local data = {}
     for _, v in ipairs(self._stateManager:getAllEntries()) do
+        self._stateManager:castLogEntry(v)
         local list = v:toList()
         table.insert(list, v:class())
         table.insert(data, list)

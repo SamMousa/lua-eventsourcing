@@ -35,6 +35,11 @@ end
 local PlayerAmountEntry = LibStub("EventSourcing/PlayerAmountEntry")
 local StartEntry = LibStub("EventSourcing/StartEntry")
 local PercentageDecayEntry = LibStub("EventSourcing/PercentageDecayEntry")
+local AceComm = LibStub("AceComm-3.0")
+local LibSerialize = LibStub("LibSerialize")
+local LibDeflate = LibStub("LibDeflate")
+
+
 function createTestData(ledger)
     guids = {}
     -- Create 500 guids (think 1 database containing 500 players)
@@ -87,15 +92,21 @@ function launchTest()
     --printtable(records);
 
     --local log = LogEntry:new()
-    local function registerReceiveHandler()
-
+    local function registerReceiveHandler(callback)
+        print("Registering handler")
+        AceComm:RegisterComm('ledgertest', function(prefix, text, distribution, sender)
+            local data = LibSerialize:DeSerialize(LibDeflate:DeCompressDeflate(text))
+            callback(data, distribution, sender)
+        end)
     end
 
-    local function send()
-
+    local function send(text, distribution, target, prio, callbackFn, callbackArg)
+        print("Sending data")
+        local data = LibDeflate:CompressDeflate(LibSerialize:Serialize(text))
+        AceComm:SendCommMessage('ledgertest', data, distribution, target, prio, callbackFn, callbackArg)
     end
 
-    local ledger = LibStub("EventSourcing/LedgerFactory").createLedger(BigDataSet, send, registerReceiveHandler)
+    ledger = LibStub("EventSourcing/LedgerFactory").createLedger(BigDataSet, send, registerReceiveHandler)
 
     if (#BigDataSet == 0) then
         createTestData(ledger)

@@ -68,8 +68,8 @@ function StateManager:registerHandler(eventType, handler)
         --Util.DumpTable(eventType)
         error("Event does not seem to have been created using LogEntry:extend()")
     end
-    o.handlers[eventType._cls] = handler
-    o.metatables[eventType._cls] = eventType
+    self.handlers[eventType._cls] = handler
+    self.metatables[eventType._cls] = eventType
 end
 
 --[[
