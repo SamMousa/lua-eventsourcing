@@ -4,14 +4,17 @@
 ## Version: 1.0
 
 ##SavedVariables: BigDataSet
+modules\LibStub.lua
 string.lua
 Util.lua
-Communication.lua
 Database.lua
+ListSync.lua
 SortedList.lua
 LogEntry.lua
-source/PlayerAmountEntry.lua
-source/PercentageDecayEntry.lua
+source\StartEntry.lua
+source\PlayerAmountEntry.lua
+source\PercentageDecayEntry.lua
 StateManager.lua
-ListSync.lua
+LedgerFactory.lua
+StatusDisplay.lua
 test.lua

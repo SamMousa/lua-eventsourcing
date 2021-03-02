@@ -27,6 +27,9 @@ LedgerFactory.createLedger = function(table, send, registerReceiveHandler)
     stateManager:setBatchSize(10)
 
     return {
+        getStateManager = function()
+            return stateManager
+        end,
         registerMutator = function(metatable, mutatorFunc)
             stateManager:registerHandler(metatable, mutatorFunc)
         end,

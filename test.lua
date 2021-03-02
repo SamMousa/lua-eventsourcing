@@ -11,9 +11,10 @@ if (GetTime == nil) then
     require "./LedgerFactory"
     require "./string"
     require "./SortedList"
+    math.randomseed(os.time())
 end
 --error('disabled')
-math.randomseed(GetTime())
+
 
 if (os == nil) then
     os = {
@@ -140,21 +141,26 @@ function launchTest()
 
     previousLag = 0
     ledger.addStateChangedListener(function(lag, uncommitted)
-        print(string.format("State changes, lag is now %d, there are %d entries not committed to the log", lag, uncommitted))
-        if previousLag > 0 and lag == 0 then
-            Util.DumpTable(state.dkp_per_creator)
+
+    local stateManager = ledger.getStateManager()
+
+        if (updateTestFrameStatus ~= nil) then
+            local mydkp = state.balances[UnitGUID("player")] or 0;
+            updateTestFrameStatus(
+                string.format("Lag: %d", lag),
+                string.format("Not committed to log: %d", uncommitted),
+                string.format("Dkp: %d",  mydkp),
+                string.format("Batchsize: %d", stateManager:getBatchSize()),
+                string.format("Interval (measured): %d", stateManager:getUpdateInterval()),
+                string.format("Log length: %d", #stateManager:getAllEntries())
+            )
+        else
+            print(string.format("State changes, lag is now %d, there are %d entries not committed to the log", lag, uncommitted))
+            if previousLag > 0 and lag == 0 then
+                Util.DumpTable(state.dkp_per_creator)
+            end
+            previousLag = lag
         end
-        previousLag = lag
-
-
-        --local mydkp = state.balances[UnitGUID("player")] or 0;
-        --updateTestFrameStatus(
-        --    string.format("Lag: %d", stateManager:lag()),
-        --    string.format("Dkp: %d",  mydkp),
-        --    string.format("Batchsize: %d", stateManager:getBatchSize()),
-        --    string.format("Interval (measured): %d", stateManager:getUpdateInterval()),
-        --    string.format("Log length: %d", sortedList:length())
-        --)
     end)
 
 
@@ -193,26 +199,27 @@ if (GetServerTime == nil) then
     launchTest()
 
 else
-    local ticker
-    -- register for event.
-     ticker = C_Timer.NewTicker(1, function()
-        print("Waiting for data load")
-        if (BigDataSet ~= nil) then
-            ticker:Cancel()
-            launchTest()
-            stateManager:setBatchSize(10)
-            stateManager:setUpdateInterval(1000)
-            ListSync = LibStub("ListSync-1.0")
-            listSync = ListSync:new('test', sortedList)
-            exampleEntry = PlayerAmountEntry:new({UnitGUID("player")}, math.random(100), "sam")
-            print("Data load")
-        end
-    end)
+--    local ticker
+--    -- register for event.
+--     ticker = C_Timer.NewTicker(1, function()
+--        print("Waiting for data load")
+--        if (BigDataSet ~= nil) then
+--            ticker:Cancel()
+--            launchTest()
+--            stateManager:setBatchSize(10)
+--            stateManager:setUpdateInterval(1000)
+--            ListSync = LibStub("ListSync-1.0")
+--            listSync = ListSync:new('test', sortedList)
+--            exampleEntry = PlayerAmountEntry:new({UnitGUID("player")}, math.random(100), "sam")
+--            print("Data load")
+--        end
+--    end)
 
 end
 
 
 
--- event loop for C_Timer
--- This is a NOOP in the wow client
+-- event loop for C_Timer outside wow
+if C_Timer.startEventLoop ~= nil then
 C_Timer.startEventLoop()
+end
