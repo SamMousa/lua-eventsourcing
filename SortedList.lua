@@ -2,10 +2,6 @@
     Sorted lists with an insert API
 ]]--
 
-if Util == nil then
-    require "Util"
-end
-
 if SortedList == nil then
     SortedList = {}
 end

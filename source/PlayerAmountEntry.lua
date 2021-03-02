@@ -1,10 +1,16 @@
 --[[
     This event models an amount of points given to a set of players on a specific ledger
 ]]--
+local Factory, _ = LibStub:NewLibrary("EventSourcing/PlayerAmountEntry", 1)
+if not Factory then
+    return
+end
 
-PlayerAmountEntry = LogEntry:extend('PAE')
 
-function PlayerAmountEntry:new(players, amount, creator, ledger)
+local LogEntry = LibStub("EventSourcing/LogEntry")
+local PlayerAmountEntry = LogEntry:extend('PAE')
+
+function PlayerAmountEntry:new(players, amount, creator)
     local o = LogEntry.new(self)
     o.cr = creator
     o.p = players
@@ -22,4 +28,12 @@ end
 
 function PlayerAmountEntry:amount()
     return self.a
+end
+
+function Factory.create(players, amount, creator)
+    return PlayerAmountEntry:new(players, amount, creator)
+end
+
+function Factory.class()
+    return PlayerAmountEntry
 end

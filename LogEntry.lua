@@ -1,7 +1,10 @@
-if LogEntry == nil then
-    LogEntry = {
-    }
+
+
+local LogEntry, _ = LibStub:NewLibrary("EventSourcing/LogEntry", 1)
+if not LogEntry then
+    return
 end
+
 
 --[[
     LogEntry models an entry in the event log

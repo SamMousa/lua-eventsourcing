@@ -1,17 +1,19 @@
 if (GetTime == nil) then
-    require "./Database"
     require "./wow"
-    require "./string"
-    require "./SortedList"
+    require "Util"
+    require "./modules/LibStub"
     require "./LogEntry"
+    require "./source/StartEntry"
     require "./source/PlayerAmountEntry"
     require "./source/PercentageDecayEntry"
+    require "./ListSync"
     require "./StateManager"
+    require "./LedgerFactory"
+    require "./string"
+    require "./SortedList"
 end
 --error('disabled')
-if (math.randomseed ~= nil) then
-    math.randomseed(GetTime())
-end
+math.randomseed(GetTime())
 
 if (os == nil) then
     os = {
@@ -29,14 +31,10 @@ function Profile:stop(name)
     print(string.format(name .. ": elapsed time: %.2f\n", elapsed))
 end
 
-StartEntry = LogEntry:extend('START', true)
-function StartEntry:new()
-    local o = LogEntry.new(self)
-    o.t = 1
-    return o
-end
-
-function createTestData()
+local PlayerAmountEntry = LibStub("EventSourcing/PlayerAmountEntry")
+local StartEntry = LibStub("EventSourcing/StartEntry")
+local PercentageDecayEntry = LibStub("EventSourcing/PercentageDecayEntry")
+function createTestData(ledger)
     guids = {}
     -- Create 500 guids (think 1 database containing 500 players)
     for i = 1, 500 do
@@ -46,11 +44,9 @@ function createTestData()
 
 
     Profile:start('Creating data')
-    sortedList = sortedList or LogEntry.sortedList()
-    table.wipe(sortedList:entries())
 
-    local start = StartEntry:new()
-    sortedList:uniqueInsert(start)
+    local start = StartEntry.create()
+    ledger.submitEntry(start)
     for i = 1, 1 * 400 do
         -- First 50 players are managers
         local creator = guids[math.random(1, 50)]
@@ -64,12 +60,12 @@ function createTestData()
             players[#players + 1] = guids[math.random(#guids)]
         end
 
-        local entry = PlayerAmountEntry:new(players, math.random(10), creator)
+        local entry = PlayerAmountEntry.create(players, math.random(10), creator)
         local copy = {}
         for k, v in pairs(entry) do
             copy[k] = v
         end
-        sortedList:uniqueInsert(copy)
+        ledger.submitEntry(copy)
         if i % 1000 == 0 then
             print('.')
         end
@@ -77,44 +73,47 @@ function createTestData()
     print('done')
 
     Profile:stop('Creating data')
-
-    BigDataSet = sortedList
 end
 
 function launchTest()
-
-
-
-        print('reconstructing list from saved variables', #BigDataSet._entries)
-        sortedList = LogEntry.sortedList(BigDataSet._entries)
-
+    if BigDataSet == nil then
+        BigDataSet = {}
+    end
+    print('reconstructing list from saved variables', #BigDataSet)
 
     --local records = Database.RetrieveByKeys(data, searchResult)
     --
     --printtable(records);
 
     --local log = LogEntry:new()
+    local function registerReceiveHandler()
 
-    stateManager = StateManager:new(sortedList)
+    end
+
+    local function send()
+
+    end
+
+    local ledger = LibStub("EventSourcing/LedgerFactory").createLedger(BigDataSet, send, registerReceiveHandler)
+
+    if (#BigDataSet == 0) then
+        createTestData(ledger)
+    end
+
+
+
+
     local state = {
         balances = {}
     }
-    stateManager:addStateChangedListener(function(stateManager)
-        local mydkp = state.balances[UnitGUID("player")] or 0;
-        updateTestFrameStatus(
-            string.format("Lag: %d", stateManager:lag()),
-            string.format("Dkp: %d",  mydkp),
-            string.format("Batchsize: %d", stateManager:getBatchSize()),
-            string.format("Interval (measured): %d", stateManager:getUpdateInterval()),
-            string.format("Log length: %d", sortedList:length())
-        )
-    end)
-    stateManager:registerHandler(StartEntry, function(entry)
+
+    ledger.registerMutator(StartEntry.class(), function(entry)
         state = {
             balances = {}
         }
     end)
-    stateManager:registerHandler(PlayerAmountEntry, function(entry)
+
+    ledger.registerMutator(PlayerAmountEntry.class(), function(entry)
         local creator = entry:creator()
         state.dkp_per_creator = state.dkp_per_creator or {}
         state.balances = state.balances or {}
@@ -125,7 +124,7 @@ function launchTest()
         end
     end)
 
-    stateManager:registerHandler(PercentageDecayEntry, function(entry)
+    ledger.registerMutator(PercentageDecayEntry.class(), function(entry)
         local creator = entry:creator()
         for player, balance in pairs(state.balances) do
             if (balance > 0) then
@@ -136,30 +135,58 @@ function launchTest()
     end)
 
 
+
+    Util.DumpTable(state)
+
+    previousLag = 0
+    ledger.addStateChangedListener(function(lag, uncommitted)
+        print(string.format("State changes, lag is now %d, there are %d entries not committed to the log", lag, uncommitted))
+        if previousLag > 0 and lag == 0 then
+            Util.DumpTable(state.dkp_per_creator)
+        end
+        previousLag = lag
+
+
+        --local mydkp = state.balances[UnitGUID("player")] or 0;
+        --updateTestFrameStatus(
+        --    string.format("Lag: %d", stateManager:lag()),
+        --    string.format("Dkp: %d",  mydkp),
+        --    string.format("Batchsize: %d", stateManager:getBatchSize()),
+        --    string.format("Interval (measured): %d", stateManager:getUpdateInterval()),
+        --    string.format("Log length: %d", sortedList:length())
+        --)
+    end)
+
+
+
+
+
     --print(string.format("%08x", 51))
-    local adler32 = Util.IntegerChecksumCoroutine()
-    stateManager:castLogEntry(sortedList:entries()[1])
-    local week = sortedList:entries()[1]:weekNumber()
-    local hashes = {}
-    print('Start week', week)
-    Profile:start('Hashing')
-    for k, v in ipairs(sortedList:entries()) do
-        stateManager:castLogEntry(v)
-        if (v:weekNumber() > week)  then
-            week = v:weekNumber()
-            adler32 = Util.IntegerChecksumCoroutine()
-        end
-        local res, err = coroutine.resume(adler32, LogEntry.time(v))
-        if not res then
-            error(err)
-        end
-        _, hashes[week] = coroutine.resume(adler32, LogEntry.random(v))
-        if (k % 1000 == 0) then
-            print('x')
-        end
-    end
-    Profile:stop('Hashing')
-    Util.DumpTable(hashes)
+    --if (sortedList:length() > 0) then
+    --    local adler32 = Util.IntegerChecksumCoroutine()
+    --    stateManager:castLogEntry(sortedList:entries()[1])
+    --    local week = sortedList:entries()[1]:weekNumber()
+    --    local hashes = {}
+    --    print('Start week', week)
+    --    Profile:start('Hashing')
+    --    for k, v in ipairs(sortedList:entries()) do
+    --        stateManager:castLogEntry(v)
+    --        if (v:weekNumber() > week)  then
+    --            week = v:weekNumber()
+    --            adler32 = Util.IntegerChecksumCoroutine()
+    --        end
+    --        local res, err = coroutine.resume(adler32, LogEntry.time(v))
+    --        if not res then
+    --            error(err)
+    --        end
+    --        _, hashes[week] = coroutine.resume(adler32, LogEntry.random(v))
+    --        if (k % 1000 == 0) then
+    --            print('x')
+    --        end
+    --    end
+    --    Profile:stop('Hashing')
+    --    Util.DumpTable(hashes)
+    --end
 end
 
 if (GetServerTime == nil) then
@@ -183,3 +210,9 @@ else
     end)
 
 end
+
+
+
+-- event loop for C_Timer
+-- This is a NOOP in the wow client
+C_Timer.startEventLoop()

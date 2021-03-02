@@ -5,9 +5,9 @@ State manager manages (re)playing the event log to calculate state
 To work it requires a reference to a SortedList
 
 ]]--
-
-if StateManager == nil then
-    StateManager = {}
+local StateManager, _ = LibStub:NewLibrary("EventSourcing/StateManager", 1)
+if not StateManager then
+    return
 end
 
 function StateManager:new(list)
@@ -16,8 +16,8 @@ function StateManager:new(list)
     self.__index = self
 
     o.list  = list
+    o.uncommittedEntries = {}
     o.handlers = {}
-    o.async = true
     o.batchSize = 1
     o.metatables = {}
     o.errorCount = 0
@@ -30,6 +30,9 @@ function StateManager:new(list)
 end
 
 function StateManager:castLogEntry(table)
+    if type(table) ~= 'table' then
+        error(string.format("Argument 1 must be of type table, %s given", type(table)))
+    end
     -- Find which meta table we should use
     if self.metatables[table.cls] == nil then
         error("Unknown class: " .. table.cls)
@@ -37,13 +40,36 @@ function StateManager:castLogEntry(table)
     setmetatable(table, self.metatables[table.cls])
 end
 
+--[[
+    This enqueues an event in list format received from an authenticated remote
+    All this does is a quick append, this can be called in a tight loop.
+    The async loop will then insert these events into the list when it next fires.
+]]--
+function StateManager:queueRemoteEvent(list)
+    local class = table.remove(list)
+    local entry = self._stateManager:createLogEntryFromClass(class)
+    entry:hydrateFromList(list)
+    table.insert(o.uncommittedEntries, entry)
+end
 
-function StateManager:registerHandler(event, handler)
-    if event._cls == nil then
+function StateManager:createLogEntryFromClass(cls)
+    local table = {}
+    if self.metatables[cls] == nil then
+        error("Unknown class: " .. cls)
+    end
+    setmetatable(table, self.metatables[cls])
+    return table
+end
+
+
+function StateManager:registerHandler(eventType, handler)
+    if eventType == nil or type(eventType) ~= "table" or eventType._cls == nil then
+        --print(eventType)
+        --Util.DumpTable(eventType)
         error("Event does not seem to have been created using LogEntry:extend()")
     end
-    o.handlers[event._cls] = handler
-    o.metatables[event._cls] = event
+    o.handlers[eventType._cls] = handler
+    o.metatables[eventType._cls] = eventType
 end
 
 --[[
@@ -91,15 +117,20 @@ function StateManager:setUpdateInterval(interval)
         self.ticker:Cancel()
     end
     if (interval == 0) then
-        -- work in synchronous mode
-        self.async = false
-        self:catchUp()
+        -- stop the timer
         return
     end
     self.ticker = C_Timer.NewTicker(interval / 1000, function()
         local t = GetTimePreciseSec()
         self.measuredInterval = t - self.lastTick
         self.lastTick = t
+
+        -- Commit uncommittedEntries to the list
+        for _, v in ipairs(self.uncommittedEntries) do
+            self.list:uniqueInsert(v)
+        end
+        self.uncommittedEntries = {}
+
 
         -- Use a closure here because we don't know what NewTicker does ie if it'll pass a different self
         success, message = pcall(self.updateState, self)
@@ -143,19 +174,18 @@ function StateManager:updateState()
     end
 end
 
-function StateManager:catchUp()
-
-end
 --[[
   @return int the number of entries the state is lagging behind the log
+  @return int the number of entries that have not been committed to the log
 ]]--
 function StateManager:lag()
-    return #self.list:entries() - self.lastAppliedIndex
+    return #self.list:entries() - self.lastAppliedIndex, #self.uncommittedEntries
 end
+
 
 function StateManager:trigger(event)
     for _, callback in ipairs(self.listeners[event] or {}) do
-        -- trigger callback, pass statemanager
+        -- trigger callback, pass state manager
         callback(self)
     end
 end
@@ -165,4 +195,8 @@ function StateManager:addStateChangedListener(callback)
         self.listeners['STATE'] = {}
     end
     table.insert(self.listeners['STATE'], callback)
+end
+
+function StateManager:getAllEntries()
+    return self.list:entries()
 end
