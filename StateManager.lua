@@ -126,10 +126,10 @@ function StateManager:setUpdateInterval(interval)
         self.lastTick = t
 
         -- Commit uncommittedEntries to the list
-        for _, v in ipairs(self.uncommittedEntries) do
-            self.list:uniqueInsert(v)
-        end
-        self.uncommittedEntries = {}
+--        for _, v in ipairs(self.uncommittedEntries) do
+--            self.list:uniqueInsert(v)
+--        end
+--        self.uncommittedEntries = {}
 
 
         -- Use a closure here because we don't know what NewTicker does ie if it'll pass a different self

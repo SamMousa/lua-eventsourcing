@@ -16,19 +16,40 @@ LogEntry.__index = LogEntry
 LogEntry._cls = 'LE'
 
 function LogEntry:extend(identifier, snapshot)
-    local o = self:new()
+    local o = constructor(self)
     o.__index = o
+
+    -- static properties (won't appear on instances)
     o._cls = identifier
     o._snapshot = snapshot or false
     return o
 end
 
-function LogEntry:new()
+-- private constructor
+function constructor(self)
     local o = {}
     setmetatable(o, self)
+    return o
+end
+function LogEntry:new(creator)
+    local o = constructor(self)
+
     o.cls = self._cls
+
     o.t = Util.time()
-    o.r = math.random(2 ^ 31- 1)
+    if creator == nil then
+        print("Missing mandatory argument 'creator'")
+        error("Missing mandatory argument 'creator'")
+    elseif type(creator) == 'string' then
+        -- check length.
+        o.c = tonumber(string.sub(creator, -8), 16)
+        if (o.c == nil) then
+            error(string.format("Failed to convert string `%s` into number", creator))
+        end
+    else
+        o.c = creator
+    end
+
     return o
 end
 
@@ -47,8 +68,8 @@ function LogEntry:time()
     return self.t
 end
 
-function LogEntry:random()
-    return self.r
+function LogEntry:creator()
+    return self.c
 end
 
 
@@ -59,7 +80,7 @@ end
 
 -- Return a sorted list set up for log entries
 function LogEntry.sortedList(data)
-    local r = SortedList:new(data or {}, Util.CreateMultiFieldSorter('t', 'r'), true)
+    local r = SortedList:new(data or {}, Util.CreateMultiFieldSorter('t', 'c'), true)
     if type(r.uniqueInsert) ~= 'function' then
         error("Error creating sorted list but doesn't have function")
     end

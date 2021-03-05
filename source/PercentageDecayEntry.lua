@@ -10,17 +10,13 @@ end
 local LogEntry = LibStub("EventSourcing/LogEntry")
 local PercentageDecayEntry = LogEntry:extend('PDE')
 
-function PercentageDecayEntry:new(percentage, creator, team)
-    local o = LogEntry.new(self);
-    o.cr = creator
-    o.team = team
+function PercentageDecayEntry:new(percentage, creator, players)
+    local o = LogEntry.new(self, creator);
+    o.p = players
     o.a = percentage
     return o
 end
 
-function PercentageDecayEntry:creator()
-    return self.cr
-end
 function PercentageDecayEntry:applyDecay(balance)
     -- We multiply by 100 and divide by 100 outside the floor to implement rounding
     return math.floor(balance * 100 * 100 / (100 + self.a)) / 100
@@ -30,8 +26,8 @@ function PercentageDecayEntry:amount()
     return self.a
 end
 
-function Factory.create(percentage, creator, team)
-    return PercentageDecayEntry:new(percentage, creator, team)
+function Factory.create(percentage, creator, players)
+    return PercentageDecayEntry:new(percentage, creator, players)
 end
 
 function Factory.class()

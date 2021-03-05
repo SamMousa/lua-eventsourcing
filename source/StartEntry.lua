@@ -12,14 +12,13 @@ local LogEntry = LibStub("EventSourcing/LogEntry")
 local StartEntry = LogEntry:extend("START", true)
 
 
-function StartEntry:new()
-    local o = LogEntry.new(self)
-    o.t = 1
+function StartEntry:new(creator)
+    local o = LogEntry.new(self, creator)
     return o
 end
 
-function Factory.create()
-    return StartEntry:new()
+function Factory.create(creator)
+    return StartEntry:new(creator)
 end
 
 function Factory.class()

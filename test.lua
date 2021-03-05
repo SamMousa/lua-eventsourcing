@@ -6,8 +6,8 @@ if (GetTime == nil) then
     require "./source/StartEntry"
     require "./source/PlayerAmountEntry"
     require "./source/PercentageDecayEntry"
-    require "./ListSync"
     require "./StateManager"
+    require "./ListSync"
     require "./LedgerFactory"
     require "./string"
     require "./SortedList"
@@ -34,6 +34,7 @@ end
 
 local PlayerAmountEntry = LibStub("EventSourcing/PlayerAmountEntry")
 local StartEntry = LibStub("EventSourcing/StartEntry")
+Util.DumpTable(StartEntry)
 local PercentageDecayEntry = LibStub("EventSourcing/PercentageDecayEntry")
 local AceComm = LibStub("AceComm-3.0")
 local LibSerialize = LibStub("LibSerialize")
@@ -51,22 +52,19 @@ function createTestData(ledger)
 
     Profile:start('Creating data')
 
-    local start = StartEntry.create()
+    local start = StartEntry.create(guids[1])
     ledger.submitEntry(start)
     for i = 1, 1 * 400 do
         -- First 50 players are managers
-        local creator = guids[math.random(1, 50)]
-        if i % 2 == 0 then
-            creator = 'bob'
-        else
-            creator = 'anna'
-        end
+        local creator = guids[math.random(1, 10)]
+
         local players = {}
         for i = 1, math.random(10) do
             players[#players + 1] = guids[math.random(#guids)]
         end
 
         local entry = PlayerAmountEntry.create(players, math.random(10), creator)
+        entry.t = math.random(2 ^ 31 - 1)
         local copy = {}
         for k, v in pairs(entry) do
             copy[k] = v
@@ -91,7 +89,6 @@ function launchTest()
     --
     --printtable(records);
 
-    --local log = LogEntry:new()
     local function registerReceiveHandler(callback)
         print("Registering handler")
         AceComm:RegisterComm('ledgertest', function(prefix, text, distribution, sender)
@@ -227,6 +224,8 @@ else
 --    end)
 
 end
+
+
 
 
 

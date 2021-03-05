@@ -106,12 +106,12 @@ end
 function Util.CreateMultiFieldSorter(field1, field2)
     return function(a, b)
         if a[field1] == b[field1] then
-            if a[field2] < b[field2] then
-                return -1
-            elseif a[field2] > b[field2] then
-                return 1
-            else
+            if a[field2] == b[field2] then
                 return 0
+            elseif a[field2] < b[field2] then
+                return -1
+            else
+                return 1
             end
         elseif a[field1] < b[field1] then
             return -1

@@ -11,16 +11,12 @@ local LogEntry = LibStub("EventSourcing/LogEntry")
 local PlayerAmountEntry = LogEntry:extend('PAE')
 
 function PlayerAmountEntry:new(players, amount, creator)
-    local o = LogEntry.new(self)
-    o.cr = creator
+    local o = LogEntry.new(self, creator)
     o.p = players
     o.a = amount
     return o
 end
 
-function PlayerAmountEntry:creator()
-    return self.cr
-end
 
 function PlayerAmountEntry:players()
     return self.p
