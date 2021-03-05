@@ -1,7 +1,7 @@
 
-if Util == nil then
-    Util = {}
-end
+local Util, _ = LibStub:NewLibrary("EventSourcing/Util", 1)
+if not Util then
+return end
 -- Searches for the first index that has value >= to the given value
 function Util.BinarySearch(list, value, comparator, min, max)
     if type(list) ~= 'table' then
@@ -101,6 +101,9 @@ end
 -- Return the 1-based unix epoch week number
 function Util.WeekNumber(unixtimestamp)
     return 1 + math.floor(unixtimestamp / 604800)
+end
+function Util.WeekStart(week)
+    return (week - 1) * 604800
 end
 
 function Util.CreateMultiFieldSorter(field1, field2)

@@ -40,16 +40,15 @@ function StateManager:castLogEntry(table)
     setmetatable(table, self.metatables[table.cls])
 end
 
---[[
-    This enqueues an event in list format received from an authenticated remote
-    All this does is a quick append, this can be called in a tight loop.
-    The async loop will then insert these events into the list when it next fires.
-]]--
-function StateManager:queueRemoteEvent(list)
+function StateManager:queueRemoteEvent(entry)
+    table.insert(o.uncommittedEntries, entry)
+end
+
+function StateManager:createLogEntryFromList(list)
     local class = table.remove(list)
     local entry = self._stateManager:createLogEntryFromClass(class)
     entry:hydrateFromList(list)
-    table.insert(o.uncommittedEntries, entry)
+    return entry
 end
 
 function StateManager:createLogEntryFromClass(cls)
@@ -197,6 +196,6 @@ function StateManager:addStateChangedListener(callback)
     table.insert(self.listeners['STATE'], callback)
 end
 
-function StateManager:getAllEntries()
-    return self.list:entries()
+function StateManager:getSortedList()
+    return self.list
 end

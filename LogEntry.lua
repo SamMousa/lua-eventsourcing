@@ -5,7 +5,7 @@ if not LogEntry then
     return
 end
 
-
+local Util = LibStub("EventSourcing/Util")
 --[[
     LogEntry models an entry in the event log
     We use short field names because the field names are serialized to disk.

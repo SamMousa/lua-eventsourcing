@@ -1,7 +1,7 @@
 if (GetTime == nil) then
     require "./wow"
-    require "Util"
     require "./modules/LibStub"
+    require "Util"
     require "./LogEntry"
     require "./source/StartEntry"
     require "./source/PlayerAmountEntry"
@@ -34,12 +34,21 @@ end
 
 local PlayerAmountEntry = LibStub("EventSourcing/PlayerAmountEntry")
 local StartEntry = LibStub("EventSourcing/StartEntry")
+local Util = LibStub("EventSourcing/Util")
 Util.DumpTable(StartEntry)
 local PercentageDecayEntry = LibStub("EventSourcing/PercentageDecayEntry")
-local AceComm = LibStub("AceComm-3.0")
-local LibSerialize = LibStub("LibSerialize")
-local LibDeflate = LibStub("LibDeflate")
 
+-- Allows defining fallbacks so we can test outside WoW
+local function LibStubWithStub(library, fallback)
+    result, lib = pcall(LibStub, library)
+    if result then
+        return lib
+    elseif type(fallback) == 'function' then
+        return fallback()
+    else
+        return fallback
+    end
+end
 
 function createTestData(ledger)
     guids = {}
@@ -80,6 +89,14 @@ function createTestData(ledger)
 end
 
 function launchTest()
+    local AceComm = LibStubWithStub("AceComm-3.0", {
+        RegisterComm = function()  end
+    })
+    local LibSerialize = LibStubWithStub("LibSerialize", {})
+    local LibDeflate = LibStubWithStub("LibDeflate", {})
+
+
+
     if BigDataSet == nil then
         BigDataSet = {}
     end
@@ -113,17 +130,22 @@ function launchTest()
 
 
     local state = {
-        balances = {}
+        balances = {},
+        weeks = {}
     }
 
     ledger.registerMutator(StartEntry.class(), function(entry)
         state = {
-            balances = {}
+            balances = {},
+            weeks = {}
         }
     end)
 
     ledger.registerMutator(PlayerAmountEntry.class(), function(entry)
+
         local creator = entry:creator()
+        state.weeks[Util.WeekNumber(entry:time())] = true
+
         state.dkp_per_creator = state.dkp_per_creator or {}
         state.balances = state.balances or {}
 
@@ -163,13 +185,17 @@ function launchTest()
                 string.format("Log length: %d", #stateManager:getAllEntries())
             )
         else
-            print(string.format("State changes, lag is now %d, there are %d entries not committed to the log", lag, uncommitted))
+            print(string.format("State changed, lag is now %d, there are %d entries not committed to the log", lag, uncommitted))
             if previousLag > 0 and lag == 0 then
                 Util.DumpTable(state.dkp_per_creator)
+                for k, v in pairs(state.weeks) do
+                    print(string.format("Week %d hash: %d", k, ledger.getListSync():weekHash(k)))
+                end
             end
             previousLag = lag
         end
     end)
+    ledger.enableSending()
 
 
 

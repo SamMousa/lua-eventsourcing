@@ -11,7 +11,7 @@ local StateManager = LibStub("EventSourcing/StateManager")
 
 
 
-LedgerFactory.createLedger = function(table, send, registerReceiveHandler)
+LedgerFactory.createLedger = function(table, send, registerReceiveHandler, authorizationHandler)
     -- Support calls via : and .
     if (self ~= nil) then
         table = self
@@ -22,10 +22,10 @@ LedgerFactory.createLedger = function(table, send, registerReceiveHandler)
 
     local sortedList = LogEntry.sortedList(table)
     local stateManager = StateManager:new(sortedList)
-    local listSync = ListSync:new(stateManager, send, registerReceiveHandler)
+    local listSync = ListSync:new(stateManager, send, registerReceiveHandler, authorizationHandler)
 
-    stateManager:setUpdateInterval(1000)
-    stateManager:setBatchSize(10)
+    stateManager:setUpdateInterval(500)
+    stateManager:setBatchSize(500)
 
     return {
         getListSync = function()
@@ -47,6 +47,12 @@ LedgerFactory.createLedger = function(table, send, registerReceiveHandler)
                 local lag, uncommitted = stateManager:lag()
                 return callback(lag, uncommitted)
             end)
+        end,
+        enableSending = function ()
+            listSync:enableSending()
+        end,
+        disableSending = function()
+            listSync:disableSending()
         end
 
 

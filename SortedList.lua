@@ -6,6 +6,8 @@ if SortedList == nil then
     SortedList = {}
 end
 
+local Util = LibStub("EventSourcing/Util")
+
 --[[
  Create a new sorted list
  @param data the initial data, this must be already sorted or things will break
@@ -78,7 +80,6 @@ function SortedList:uniqueInsert(element)
 end
 
 
-
 -- We don't return a value since we are change the table, this makes it clear for consuming code
 --function SortedList:cast(table, compare)
 --    if (table._entries == nil) then
@@ -90,6 +91,9 @@ end
 
 
 
+function SortedList:searchGreaterThanOrEqual(entry)
+    return Util.BinarySearch(self._entries, entry, self._compare)
+end
 
 
 
