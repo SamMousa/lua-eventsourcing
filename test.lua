@@ -38,7 +38,7 @@ end
 local PlayerAmountEntry = LibStub("EventSourcing/PlayerAmountEntry")
 local StartEntry = LibStub("EventSourcing/StartEntry")
 local Util = LibStub("EventSourcing/Util")
-Util.DumpTable(StartEntry)
+
 local PercentageDecayEntry = LibStub("EventSourcing/PercentageDecayEntry")
 
 -- Allows defining fallbacks so we can test outside WoW

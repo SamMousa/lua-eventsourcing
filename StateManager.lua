@@ -10,10 +10,29 @@ if not StateManager then
     return
 end
 
+-- PRIVATE FUNCTIONS
 local EVENT = {
     STATE_CHANGED = 'state',
     RESTART = 'restart',
 }
+
+function hydrateEntryFromList(entry, data)
+    for i, key in ipairs(entry:fields()) do
+        entry[key] = data[i]
+    end
+end
+
+function entryToList(entry)
+    local result = {}
+    for _, key in ipairs(entry:fields()) do
+        table.insert(result, entry[key])
+    end
+    return result
+end
+
+
+-- END PRIVATE
+
 function StateManager:new(list)
     o = {}
     setmetatable(o, self)
@@ -57,8 +76,15 @@ function StateManager:createLogEntryFromList(list)
     end
     local class = table.remove(list)
     local entry = self:createLogEntryFromClass(class)
-    entry:hydrateFromList(list)
+    hydrateEntryFromList(entry, list)
     return entry
+end
+
+function StateManager:createListFromEntry(entry)
+    self:castLogEntry(entry)
+    local result = entryToList(entry)
+    table.insert(result, entry:class())
+    return result
 end
 
 function StateManager:createLogEntryFromClass(cls)
@@ -67,6 +93,7 @@ function StateManager:createLogEntryFromClass(cls)
         error("Unknown class: " .. cls)
     end
     setmetatable(table, self.metatables[cls])
+    table.cls = cls
     return table
 end
 

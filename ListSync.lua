@@ -160,9 +160,7 @@ function ListSync:weekSyncViaWhisper(target, week)
     local data = {}
 
     for entry in self:weekEntryIterator(week) do
-        local list = entry:toList()
-        table.insert(list, entry:class())
-        table.insert(data, entry)
+        table.insert(data, self._stateManager:createListFromEntry(entry))
     end
     local message = {
         type = "bulkSync",
@@ -174,10 +172,7 @@ end
 function ListSync:fullSyncViaWhisper(target)
     local data = {}
     for _, v in ipairs(self._stateManager:getSortedList():entries()) do
-        self._stateManager:castLogEntry(v)
-        local list = v:toList()
-        table.insert(list, v:class())
-        table.insert(data, list)
+        table.insert(data, self._stateManager:createListFromEntry(v))
     end
     local message = {
         type = "bulkSync",

@@ -87,39 +87,6 @@ function LogEntry.sortedList(data)
     return r
 end
 
---[[
-    Serialize the entry to a list, this allows LibSerialize et al to be more efficient
-    We ignore the class since we need to serialize it separately to enable custom toList and from implementations.
-]]--
-function LogEntry:toList()
-    local keys = {}
-    for k, v in pairs(self) do
-        if (k ~= 'cls') then
-            table.insert(keys, k)
-        end
-    end
-    table.sort(keys)
-    local result = {}
-    for _, key in ipairs(keys) do
-        table.insert(result, self[key])
-    end
-    return result
-end
-
---[[
-    Hydrate the entry from a list of values
-    We ignore the class since we need to serialize it separately to enable custom toList and from implementations.
-]]--
-function LogEntry:hydrateFromList(data)
-    local keys = {}
-    for k, v in pairs(self:new()) do
-        if (k ~= 'cls') then
-            table.insert(k)
-        end
-    end
-    Util.DumpTable(keys)
-    table.sort(keys)
-    for i, key in ipairs(keys) do
-        self[key] = data[i]
-    end
+function LogEntry:fields()
+    return { "t", "c"}
 end

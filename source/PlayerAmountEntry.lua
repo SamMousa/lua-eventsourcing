@@ -26,6 +26,13 @@ function PlayerAmountEntry:amount()
     return self.a
 end
 
+function PlayerAmountEntry:fields()
+    local result = LogEntry:fields()
+    table.insert(result, 'p')
+    table.insert(result, 'a')
+    return result
+end
+
 function Factory.create(players, amount, creator)
     return PlayerAmountEntry:new(players, amount, creator)
 end
