@@ -119,7 +119,6 @@ function launchTest()
     local function registerReceiveHandler(callback)
         print("Registering handler")
         AceComm:RegisterComm('ledgertest', function(prefix, text, distribution, sender)
-            print(prefix, text, distribution, sender)
             local result, data = LibSerialize:Deserialize(
                 LibDeflate:DecompressDeflate(LibDeflate:DecodeForWoWAddonChannel(text)))
             if result then
