@@ -27,6 +27,7 @@ function SortedList:new(data, compare, unique)
     end
     o._compare = compare
     o._unique = unique or false
+    o._state = 1
     return o
 end
 
@@ -38,10 +39,14 @@ function SortedList:length()
     return #self._entries
 end
 
+function SortedList:state()
+    return self._state
+end
 function SortedList:insert(element)
     if (self._unique) then
         error("This list only supports uniqueInsert")
     end
+    self._state = self._state + 1
     -- since we expect elements to be mostly appended, we do a shortcut check.
     if (#self._entries == 0 or self._compare(self._entries[#self._entries], element) == -1) then
         table.insert(self._entries, element)
@@ -63,6 +68,7 @@ end
   @returns bool indicating whether a new element was inserted
 ]]--
 function SortedList:uniqueInsert(element)
+    self._state = self._state + 1
     if (#self._entries == 0 or self._compare(self._entries[#self._entries], element) == -1) then
         table.insert(self._entries, element)
         return true
@@ -79,7 +85,12 @@ function SortedList:uniqueInsert(element)
     return true
 end
 
-
+function SortedList:wipe()
+    for i, _ in ipairs(self._entries) do
+        self._entries[i] = nil
+    end
+    self._state = self._state + 1
+end
 -- We don't return a value since we are change the table, this makes it clear for consuming code
 --function SortedList:cast(table, compare)
 --    if (table._entries == nil) then

@@ -25,7 +25,7 @@ LedgerFactory.createLedger = function(table, send, registerReceiveHandler, autho
     local listSync = ListSync:new(stateManager, send, registerReceiveHandler, authorizationHandler)
 
     stateManager:setUpdateInterval(500)
-    stateManager:setBatchSize(500)
+    stateManager:setBatchSize(5)
 
     return {
         getListSync = function()
@@ -39,6 +39,9 @@ LedgerFactory.createLedger = function(table, send, registerReceiveHandler, autho
         end,
         submitEntry = function(entry)
             return sortedList:uniqueInsert(entry)
+        end,
+        reset = function()
+            stateManager:reset()
         end,
         addStateChangedListener = function(callback)
             -- We hide the state manager from this callback

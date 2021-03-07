@@ -160,6 +160,9 @@ end
 function StateManager:updateState()
     local entries = self.list:entries()
     local applied = 0
+    if self.lastAppliedIndex > #entries then
+        self.lastAppliedIndex = 0
+    end
     while applied < self.batchSize and self.lastAppliedIndex < #entries do
         local entry = entries[self.lastAppliedIndex + 1]
         self:castLogEntry(entry)
@@ -181,6 +184,14 @@ function StateManager:lag()
     return #self.list:entries() - self.lastAppliedIndex, #self.uncommittedEntries
 end
 
+function StateManager:logSize()
+    return #self.list:entries()
+end
+
+function StateManager:reset()
+    self.list:wipe()
+    self.lastAppliedIndex = 0
+end
 
 function StateManager:trigger(event)
     for _, callback in ipairs(self.listeners[event] or {}) do

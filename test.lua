@@ -14,7 +14,10 @@ if (GetTime == nil) then
     math.randomseed(os.time())
 end
 --error('disabled')
-
+local state = {
+    balances = {},
+    weeks = {}
+}
 
 if (os == nil) then
     os = {
@@ -58,10 +61,15 @@ function createTestData(ledger)
         table.insert(guids, string.format('%08x', player))
     end
 
-
+    state = {
+        balances = {},
+        weeks = {}
+    }
+    ledger.reset()
     Profile:start('Creating data')
 
     local start = StartEntry.create(guids[1])
+    start.t = Util.time() - 604800 * 4
     ledger.submitEntry(start)
     for i = 1, 1 * 400 do
         -- First 50 players are managers
@@ -73,7 +81,8 @@ function createTestData(ledger)
         end
 
         local entry = PlayerAmountEntry.create(players, math.random(10), creator)
-        entry.t = math.random(2 ^ 31 - 1)
+        -- today minus 4 weeks
+        entry.t = Util.time() - math.random(604800 * 4)
         local copy = {}
         for k, v in pairs(entry) do
             copy[k] = v
@@ -109,50 +118,56 @@ function launchTest()
     local function registerReceiveHandler(callback)
         print("Registering handler")
         AceComm:RegisterComm('ledgertest', function(prefix, text, distribution, sender)
-            local data = LibSerialize:DeSerialize(LibDeflate:DeCompressDeflate(text))
-            callback(data, distribution, sender)
+            local result, data = LibSerialize:Deserialize(LibDeflate:DecompressDeflate(text))
+            if result then
+                callback(data, distribution, sender)
+            end
         end)
     end
 
-    local function send(text, distribution, target, prio, callbackFn, callbackArg)
-        print("Sending data")
-        local data = LibDeflate:CompressDeflate(LibSerialize:Serialize(text))
-        AceComm:SendCommMessage('ledgertest', data, distribution, target, prio, callbackFn, callbackArg)
+    local function send(data, distribution, target, prio, callbackFn, callbackArg)
+        local serialized = LibSerialize:Serialize(data)
+--        print("Sending")
+--        Util.DumpTable(data)
+        local compressed = LibDeflate:CompressDeflate(serialized)
+        AceComm:SendCommMessage('ledgertest', compressed, distribution, target, prio, callbackFn, callbackArg)
     end
 
     ledger = LibStub("EventSourcing/LedgerFactory").createLedger(BigDataSet, send, registerReceiveHandler)
 
     if (#BigDataSet == 0) then
-        createTestData(ledger)
+--        createTestData(ledger)
     end
 
 
 
 
-    local state = {
-        balances = {},
-        weeks = {}
-    }
+
 
     ledger.registerMutator(StartEntry.class(), function(entry)
         state = {
             balances = {},
             weeks = {}
         }
+        print("Start entry handled")
     end)
 
     ledger.registerMutator(PlayerAmountEntry.class(), function(entry)
 
         local creator = entry:creator()
+        local amount = entry:amount()
         state.weeks[Util.WeekNumber(entry:time())] = true
+
 
         state.dkp_per_creator = state.dkp_per_creator or {}
         state.balances = state.balances or {}
 
         for _, player in ipairs(entry:players()) do
-            state.balances[player] = (state.balances[player] or 0) + entry:amount()
-            state.dkp_per_creator[creator] = (state.dkp_per_creator[creator] or 0) + entry:amount()
+            state.balances[player] = (state.balances[player] or 0) + amount
+            state.total_dkp = (state.total_dkp or 0)+ amount
+            state.dkp_per_creator[creator] = (state.dkp_per_creator[creator] or 0) + amount
         end
+
     end)
 
     ledger.registerMutator(PercentageDecayEntry.class(), function(entry)
@@ -160,7 +175,7 @@ function launchTest()
         for player, balance in pairs(state.balances) do
             if (balance > 0) then
                 state.balances[player] = entry:applyDecay(balance)
-                state.totalDecay = (state.totalDecay or 0) + (balance - state.balances[player])
+                state.totalDecay = state.totalDecay + (balance - state.balances[player])
             end
         end
     end)
@@ -170,7 +185,10 @@ function launchTest()
     Util.DumpTable(state)
 
     previousLag = 0
+    local updateCounter = 0
+
     ledger.addStateChangedListener(function(lag, uncommitted)
+        updateCounter = updateCounter + 1
 
     local stateManager = ledger.getStateManager()
 
@@ -178,11 +196,13 @@ function launchTest()
             local mydkp = state.balances[UnitGUID("player")] or 0;
             updateTestFrameStatus(
                 string.format("Lag: %d", lag),
-                string.format("Not committed to log: %d", uncommitted),
+                string.format("Uncommitted: %d", uncommitted),
                 string.format("Dkp: %d",  mydkp),
+                string.format("Total dkp: %d",  state.total_dkp),
                 string.format("Batchsize: %d", stateManager:getBatchSize()),
                 string.format("Interval (measured): %d", stateManager:getUpdateInterval()),
-                string.format("Log length: %d", #stateManager:getAllEntries())
+                string.format("Log length: %d", stateManager:logSize()),
+                string.format("Update counter: %d", updateCounter)
             )
         else
             print(string.format("State changed, lag is now %d, there are %d entries not committed to the log", lag, uncommitted))
@@ -195,7 +215,13 @@ function launchTest()
             previousLag = lag
         end
     end)
-    ledger.enableSending()
+
+    if UnitName("player") == "Awesam" then
+        print("Player is Sam, enabling sending")
+        ledger.enableSending()
+    else
+        print("Player is not Sam, not enabling sending")
+    end
 
 
 
@@ -233,22 +259,14 @@ if (GetServerTime == nil) then
     launchTest()
 
 else
---    local ticker
---    -- register for event.
---     ticker = C_Timer.NewTicker(1, function()
---        print("Waiting for data load")
---        if (BigDataSet ~= nil) then
---            ticker:Cancel()
---            launchTest()
---            stateManager:setBatchSize(10)
---            stateManager:setUpdateInterval(1000)
---            ListSync = LibStub("ListSync-1.0")
---            listSync = ListSync:new('test', sortedList)
---            exampleEntry = PlayerAmountEntry:new({UnitGUID("player")}, math.random(100), "sam")
---            print("Data load")
---        end
---    end)
-
+    local frame = CreateFrame("Frame")
+    frame:RegisterEvent("ADDON_LOADED")
+    frame:SetScript("OnEvent", function(data, event, addon)
+        if addon == 'LuaDatabase'then
+            BigDataSet = BigDataSet or {}
+            launchTest()
+        end
+    end)
 end
 
 
