@@ -22,96 +22,98 @@ function ListSync:new(stateManager, sendAddonMessage, registerReceiveHandler, au
     setmetatable(o, self)
     self.__index = self
 
-    self.advertiseTicker = nil
-    self.sendAddonMessage = sendAddonMessage
-    self.authorizationHandler = authorizationHandler
+    o.advertiseTicker = nil
+    o.sendAddonMessage = sendAddonMessage
+    o.authorizationHandler = authorizationHandler
 
-    self._stateManager = stateManager
-    self._weekHashCache = {
+    o._stateManager = stateManager
+    o._weekHashCache = {
         -- numeric counter for checking if the list has changed
         state = stateManager:getSortedList():state(),
         entries = {}
     }
-
-    local playerName = UnitName("player")
+    o.playerName = UnitName("player")
     registerReceiveHandler(function(message, distribution, sender)
-        if type(message) ~= 'table' then
-            print(string.format("Received message that is not a table from %s", sender))
-            print(message)
-
-            return
-        end
-
-        if sender == playerName then
-            print("Ignoring message from self [[DEBUG: NOT IGNORING]]")
---            return
-        end
-        -- our messages have a type, this way we can use 1 prefix for all communication
-        if message.type == "bulkSync" then
-            -- handle full sync
-            local count = 0
-            for i, v in ipairs(message.data) do
-                local entry = self._stateManager:createLogEntryFromList(v)
-                -- Check authorize each events
-                if authorizationHandler(entry, sender) then
-                    self._stateManager:queueRemoteEvent(entry)
-                    count = count + 1
-                else
-                    print(string.format("Dropping event from sender %s", sender))
-                end
-            end
-            print("Enqueued %d events from remote received from %s via %s", count, sender, distribution)
-        elseif message.type == "singleEntry" then
-            local entry = self._stateManager:createLogEntryFromList(message.data)
-            if authorizationHandler(entry, sender) then
-                self._stateManager:queueRemoteEvent(entry)
-                count = count + 1
-            else
-                print(string.format("Dropping event from sender %s", sender))
-            end
-        elseif message.type == MESSAGE.WEEKHASH then
-            -- We received an announce
-            local hash, count = self:weekHash(message.week)
-            if  hash == message.hash and count == message.count then
-                print(string.format("Received week hash from %s, we are in sync", sender))
-            else
-                print(string.format("Received week hash from %s, we are NOT in sync", sender))
-                print("Requesting this week")
-                self:send({
-                    type = MESSAGE.REQUESTWEEK,
-                    week = message.week,
-                    hash = message.hash
-                })
-            end
-        elseif self:isSendingEnabled() and message.type == MESSAGE.REQUESTWEEK then
-            -- If we don't have the same week hash we ignore the request
-            local hash, count = self:weekHash(message.week)
-            if  hash ~= message.hash or count ~= message.count then
-                print(string.format("Ignoring week request for week %d with hash %d from %s, we are not in sync",
-                 message.week, message.hash))
-                return
-            end
-
-            if distribution == "WHISPER" then
-                self:weekSyncViaWhisper(sender, message.week)
-            elseif distribution == "GUILD" then
-                -- We need to prevent hammering the guild comms with updates.
-                   -- Every agent has an upper limit on sending a week twice (ie send at most once every minute)
-                   --
-                -- temp fix: always respond via whisper.
-                self:weekSyncViaWhisper(sender, message.week)
-            end
-        elseif message.type ~= nil then
-            print(string.format("Received unknown message type %s from %s", message.type, sender))
-        else
-            print("Received message in unknown table format")
-        end
-
+        o:handleMessage(message, distribution, sender)
     end)
 
     return o
 end
 
+function ListSync:handleMessage(message, distribution, sender)
+    if type(message) ~= 'table' then
+        print(string.format("Received message that is not a table from %s", sender))
+        print(message)
+
+        return
+    end
+
+    if sender == self.playerName then
+        print("Ignoring message from self [[DEBUG: NOT IGNORING]]")
+        --            return
+    end
+    -- our messages have a type, this way we can use 1 prefix for all communication
+    if message.type == "bulkSync" then
+        -- handle full sync
+        local count = 0
+        for i, v in ipairs(message.data) do
+            local entry = self._stateManager:createLogEntryFromList(v)
+            -- Check authorize each events
+            if self.authorizationHandler(entry, sender) then
+                self._stateManager:queueRemoteEvent(entry)
+                count = count + 1
+            else
+                print(string.format("Dropping event from sender %s", sender))
+            end
+        end
+        print(string.format("Enqueued %d events from remote received from %s via %s", count, sender, distribution))
+    elseif message.type == "singleEntry" then
+        local entry = self._stateManager:createLogEntryFromList(message.data)
+        if self.authorizationHandler(entry, sender) then
+            self._stateManager:queueRemoteEvent(entry)
+            count = count + 1
+        else
+            print(string.format("Dropping event from sender %s", sender))
+        end
+    elseif message.type == MESSAGE.WEEKHASH then
+        -- We received an announce
+        local hash, count = self:weekHash(message.week)
+        if  hash == message.hash and count == message.count then
+            print(string.format("Received week hash from %s, we are in sync", sender))
+        else
+            print(string.format("Received week hash from %s, we are NOT in sync", sender))
+            print("Requesting this week")
+            self:send({
+                type = MESSAGE.REQUESTWEEK,
+                week = message.week,
+                hash = message.hash
+            })
+        end
+    elseif self:isSendingEnabled() and message.type == MESSAGE.REQUESTWEEK then
+        -- If we don't have the same week hash we ignore the request
+        local hash, count = self:weekHash(message.week)
+        if  hash ~= message.hash or count ~= message.count then
+            print(string.format("Ignoring week request for week %d with hash %d from %s, we are not in sync",
+                message.week, message.hash))
+            return
+        end
+
+        if distribution == "WHISPER" then
+            self:weekSyncViaWhisper(sender, message.week)
+        elseif distribution == "GUILD" then
+            -- We need to prevent hammering the guild comms with updates.
+            -- Every agent has an upper limit on sending a week twice (ie send at most once every minute)
+            --
+            -- temp fix: always respond via whisper.
+            self:weekSyncViaWhisper(sender, message.week)
+        end
+    elseif message.type ~= nil then
+        print(string.format("Received unknown message type %s from %s", message.type, sender))
+    else
+        print("Received message in unknown table format")
+    end
+
+end
 --[[
     Sends an entry out over the guild channel, if allowed
 ]]--
@@ -158,17 +160,15 @@ function ListSync:weekSyncViaWhisper(target, week)
     local data = {}
 
     for entry in self:weekEntryIterator(week) do
-        local list = v:toList()
-        table.insert(list, v:class())
-        table.insert(data, list)
+        local list = entry:toList()
+        table.insert(list, entry:class())
+        table.insert(data, entry)
     end
     local message = {
         type = "bulkSync",
         data = data
     }
-    self.sendAddonMessage(message, "WHISPER", target, "BULK", function(_, sent, total)
-        print(string.format("Sent %d of %d", sent, total))
-    end)
+    self:send(message, "WHISPER", target)
 end
 
 function ListSync:fullSyncViaWhisper(target)
@@ -214,7 +214,7 @@ end
 
 function ListSync:disableSending()
     if self.advertiseTicker ~= nill then
-        self.advertiseTicker:cancel()
+        self.advertiseTicker:Cancel()
         self.advertiseTicker = nil
     end
 end

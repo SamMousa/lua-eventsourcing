@@ -63,7 +63,8 @@ function createTestData(ledger)
 
     state = {
         balances = {},
-        weeks = {}
+        weeks = {},
+        total_dkp = 0
     }
     ledger.reset()
     Profile:start('Creating data')
@@ -118,9 +119,13 @@ function launchTest()
     local function registerReceiveHandler(callback)
         print("Registering handler")
         AceComm:RegisterComm('ledgertest', function(prefix, text, distribution, sender)
-            local result, data = LibSerialize:Deserialize(LibDeflate:DecompressDeflate(text))
+            print(prefix, text, distribution, sender)
+            local result, data = LibSerialize:Deserialize(
+                LibDeflate:DecompressDeflate(LibDeflate:DecodeForWoWAddonChannel(text)))
             if result then
                 callback(data, distribution, sender)
+            else
+                print("Failed to deserialize data", data)
             end
         end)
     end
@@ -129,11 +134,12 @@ function launchTest()
         local serialized = LibSerialize:Serialize(data)
 --        print("Sending")
 --        Util.DumpTable(data)
-        local compressed = LibDeflate:CompressDeflate(serialized)
+        local compressed = LibDeflate:EncodeForWoWAddonChannel(LibDeflate:CompressDeflate(serialized))
+
         AceComm:SendCommMessage('ledgertest', compressed, distribution, target, prio, callbackFn, callbackArg)
     end
 
-    ledger = LibStub("EventSourcing/LedgerFactory").createLedger(BigDataSet, send, registerReceiveHandler)
+    ledger = LibStub("EventSourcing/LedgerFactory").createLedger(BigDataSet, send, registerReceiveHandler, function() return true end)
 
     if (#BigDataSet == 0) then
 --        createTestData(ledger)
@@ -152,6 +158,13 @@ function launchTest()
         print("Start entry handled")
     end)
 
+    ledger.addStateRestartListener(function()
+        state = {
+            balances = {},
+            weeks = {}
+        }
+        print("State restarted")
+    end)
     ledger.registerMutator(PlayerAmountEntry.class(), function(entry)
 
         local creator = entry:creator()

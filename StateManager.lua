@@ -10,6 +10,10 @@ if not StateManager then
     return
 end
 
+local EVENT = {
+    STATE_CHANGED = 'state',
+    RESTART = 'restart',
+}
 function StateManager:new(list)
     o = {}
     setmetatable(o, self)
@@ -26,6 +30,7 @@ function StateManager:new(list)
     o.measuredInterval = 0
 
     o.lastAppliedIndex = 0
+    o.lastAppliedEntry = nil
     return o
 end
 
@@ -41,12 +46,17 @@ function StateManager:castLogEntry(table)
 end
 
 function StateManager:queueRemoteEvent(entry)
-    table.insert(o.uncommittedEntries, entry)
+    table.insert(self.uncommittedEntries, entry)
 end
 
 function StateManager:createLogEntryFromList(list)
+    if list.cls ~= nil then
+        -- this is not really a list
+        self:castLogEntry(list)
+        return list
+    end
     local class = table.remove(list)
-    local entry = self._stateManager:createLogEntryFromClass(class)
+    local entry = self:createLogEntryFromClass(class)
     entry:hydrateFromList(list)
     return entry
 end
@@ -125,10 +135,10 @@ function StateManager:setUpdateInterval(interval)
         self.lastTick = t
 
         -- Commit uncommittedEntries to the list
---        for _, v in ipairs(self.uncommittedEntries) do
---            self.list:uniqueInsert(v)
---        end
---        self.uncommittedEntries = {}
+        for _, v in ipairs(self.uncommittedEntries) do
+            self.list:uniqueInsert(v)
+        end
+        self.uncommittedEntries = {}
 
 
         -- Use a closure here because we don't know what NewTicker does ie if it'll pass a different self
@@ -160,8 +170,13 @@ end
 function StateManager:updateState()
     local entries = self.list:entries()
     local applied = 0
-    if self.lastAppliedIndex > #entries then
+    if self.lastAppliedIndex > #entries
+        or (self.lastAppliedEntry ~= nil and entries[self.lastAppliedIndex] ~= self.lastAppliedEntry)
+    then
+        print("Detected list change, restarting state calc")
         self.lastAppliedIndex = 0
+        self.lastAppliedEntry = nil
+        self:trigger(EVENT.RESTART)
     end
     while applied < self.batchSize and self.lastAppliedIndex < #entries do
         local entry = entries[self.lastAppliedIndex + 1]
@@ -169,10 +184,11 @@ function StateManager:updateState()
         -- This will throw an error if update fails, this is good since we don't want to update our tracking in that case.
         self.handlers[entry:class()](entry)
         self.lastAppliedIndex = self.lastAppliedIndex + 1
+        self.lastAppliedEntry = entry
         applied = applied + 1
     end
-    if applied > 0 then
-        self:trigger('STATE')
+    if applied > 0 or true then
+        self:trigger(EVENT.STATE_CHANGED)
     end
 end
 
@@ -190,7 +206,6 @@ end
 
 function StateManager:reset()
     self.list:wipe()
-    self.lastAppliedIndex = 0
 end
 
 function StateManager:trigger(event)
@@ -201,10 +216,17 @@ function StateManager:trigger(event)
 end
 
 function StateManager:addStateChangedListener(callback)
-    if self.listeners['STATE'] == nil then
-        self.listeners['STATE'] = {}
+    if self.listeners[EVENT.STATE_CHANGED] == nil then
+        self.listeners[EVENT.STATE_CHANGED] = {}
     end
-    table.insert(self.listeners['STATE'], callback)
+    table.insert(self.listeners[EVENT.STATE_CHANGED], callback)
+end
+
+function StateManager:addStateRestartListener(callback)
+    if self.listeners[EVENT.RESTART] == nil then
+        self.listeners[EVENT.RESTART] = {}
+    end
+    table.insert(self.listeners[EVENT.RESTART], callback)
 end
 
 function StateManager:getSortedList()

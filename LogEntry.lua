@@ -112,14 +112,14 @@ end
 ]]--
 function LogEntry:hydrateFromList(data)
     local keys = {}
-    for k, v in pairs(self) do
+    for k, v in pairs(self:new()) do
         if (k ~= 'cls') then
             table.insert(k)
         end
     end
+    Util.DumpTable(keys)
     table.sort(keys)
     for i, key in ipairs(keys) do
         self[key] = data[i]
     end
-    return result
 end
