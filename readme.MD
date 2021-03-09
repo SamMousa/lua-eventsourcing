@@ -1,29 +1,54 @@
-# LUA Database
+# Event sourcing for WoW
 
-This is / will be a library that creates a table store in LUA with support for custom indices.
+WoW addons often need to keep some sort of state across multiple clients. A typical example is DKP or guild loot history.
+The challenge with keeping complex state is often sync and merge.
 
-The API, for now looks roughly like this:
+This library solves the sync problem by using event sourcing.
 
-```lua
-data = {}
+- We store simple events with a timestamp (4bytes), a creator ID (4bytes), a counter (1 byte)
+- Events are absolutely ordered using a custom function
+- State is deterministically derived by executing handlers for each event in order
+- The event log from now on called the ledger, is insert only, no events can be removed from it
 
-data.test1 =  {a = 16, ts = 11213};
-data.test2 =  {a = 14, ts = 12313};
-data.test3 =  {b = 12, ts = 12113};
-data.test4 =  {a = 11, ts = 12313};
-data.test5 =  {a = 12, ts = 12113};
-data.test6 =  {a = 11, ts = 12313};
+Having an insert only data store allows us to simplify synchronization.
+We use an authorization handler to allow library consumers to decide their trust model, before any event is added to the local store
+or sent out over any broadcast channel, the authorization handler is called.
+
+## UI Freezes
+
+One common problem of sending large data sets is the UI freezing when data is serialized or unserialized.
+This library will sync smaller data sets to prevent this freeze.
+Playing events (ie calculating state) is done in batches on a recurring timer. This gives us 2 knobs (batchsize, interval)
+to play with to reduce noticable lag.
+
+## Performance
+
+Initial testing shows us that replaying events can be done at a speed of roughly 10.000/s.
+For our use cases this should be fine, consumers should implement snapshotting when they expect to go over that amount
+
+## Pruning
+TBD
+
+## Syncing
+
+We use unix timestamps across this library. To get the weeknumber for a timestamp we simply divide by 604800, this gives us
+a unix week number. We hash the unique keys using Adler32, we implemented the algorithm using a coroutine.
+Hashing is very fast and allows us to quickly determine change sets between agents.
+
+The initial idea for sync is as follows:
+- Sync should be stateless as much as possible
+- Senders (ie agents that have sending enabled) should advertise their last 4 week hashes on an interval
+- If an agent receives a hash that is different from their local hash, they should request the week data
+- When a sender receives this request they broadcast the data for the week.
+
+To prevent a lot of noise we use inhibitors. (NOT FULLY THOUGHT OUT)
+- Don't ever send week data that was sent < x seconds ago
+- Don't request a week that someone else has requested
+- Don't advertise a hash that someone else has advertised
+
+Then there is the issue of responding to requests on broadcast channels. We don't want every sender to immediately spam the channel
+with data...
+- Instead of immediately sending data, send a small announcement that you'll be sending.
 
 
-local table = Database.Table:new(data);
-table:AddIndex("a")
-table:AddIndex("b")
-
--- This will take all records with values 10 .. 15 in field b
-local searchResult = table:SearchRange(10, 15, "b");
-
-```
-
-Future ideas:
-- Add optional auto updating of indices (this can be more efficient than rebuilding them)
-- 
+To be continued...
