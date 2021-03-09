@@ -16,13 +16,13 @@ local EVENT = {
     RESTART = 'restart',
 }
 
-function hydrateEntryFromList(entry, data)
+local function hydrateEntryFromList(entry, data)
     for i, key in ipairs(entry:fields()) do
         entry[key] = data[i]
     end
 end
 
-function entryToList(entry)
+local function entryToList(entry)
     local result = {}
     for _, key in ipairs(entry:fields()) do
         table.insert(result, entry[key])
@@ -34,7 +34,7 @@ end
 -- END PRIVATE
 
 function StateManager:new(list)
-    o = {}
+    local o = {}
     setmetatable(o, self)
     self.__index = self
 
@@ -169,7 +169,7 @@ function StateManager:setUpdateInterval(interval)
 
 
         -- Use a closure here because we don't know what NewTicker does ie if it'll pass a different self
-        success, message = pcall(self.updateState, self)
+        local success, message = pcall(self.updateState, self)
         if (not success) then
             print(message)
             self.errorCount = self.errorCount + 1

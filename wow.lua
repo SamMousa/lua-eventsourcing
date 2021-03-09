@@ -33,13 +33,13 @@ end
 function C_Timer.startEventLoop()
     if os.execute ~= nil then
         print("Starting custom event loop to mimic WOW C_Timer tickers")
-        i = 0
+        local i = 0
         while os.execute("sleep 1") == 0 do
             io.write('.')
             io.flush()
             for interval, callbacks in pairs(tickers) do
                 if (i % interval == 0) then
-                    for _, callback in ipairs(tickers[interval]) do
+                    for _, callback in ipairs(callbacks) do
                         callback()
                     end
                 end
@@ -49,4 +49,8 @@ function C_Timer.startEventLoop()
         end
         print("\nEvent loop stopped")
     end
+end
+
+function UnitName()
+    return "Bob"
 end

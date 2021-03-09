@@ -14,24 +14,26 @@ if (GetTime == nil) then
     math.randomseed(os.time())
 end
 
+
+
 local PlayerAmountEntry = LibStub("EventSourcing/PlayerAmountEntry")
 local StartEntry = LibStub("EventSourcing/StartEntry")
 
-function assertTrue(param, message)
+local function assertTrue(param, message)
     if param ~= true then
         error("Assertion failed: " .. message)
     else
         print("Assertion ok")
     end
 end
-function assertSame(expected, value)
+local function assertSame(expected, value)
     if expected ~= value then
         error("Failed assert that expected " .. expected .. " matches " .. value)
     else
         print("Assertion OK")
     end
 end
-function assertError(cb)
+local function assertError(cb)
     if pcall(cb) then
         error("Assert failed: Expected error")
     end

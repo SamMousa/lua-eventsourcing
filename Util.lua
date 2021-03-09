@@ -229,3 +229,26 @@ function Util.IntegerChecksumCoroutine()
 end
 
 --Util.TestBinarySearch()
+local defaultCharset = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ"
+
+function Util.random(length, alternativeCharset)
+    local charset = alternativeCharset or defaultCharset
+    local charsetLength = string.len(charset)
+    local result = ""
+    while string.len(result) < length do
+        local i = math.random(1, charsetLength)
+        result = result .. charset.sub(charset, i, i)
+    end
+    return result
+end
+
+function Util.guid()
+    local hex = '0123456789abcdef'
+    return table.concat({
+        Util.random(8, hex),
+        Util.random(4, hex),
+        Util.random(4, hex),
+        Util.random(4, hex),
+        Util.random(12, hex),
+    }, '-')
+end

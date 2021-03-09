@@ -18,7 +18,10 @@ function ListSync:new(stateManager, sendAddonMessage, registerReceiveHandler, au
     if getmetatable(stateManager) ~= StateManager then
         error("stateManager must be an instance of StateManager")
     end
-    o = {}
+
+
+
+    local o = {}
     setmetatable(o, self)
     self.__index = self
 
@@ -56,7 +59,7 @@ function ListSync:handleMessage(message, distribution, sender)
     if message.type == "bulkSync" then
         -- handle full sync
         local count = 0
-        for i, v in ipairs(message.data) do
+        for _, v in ipairs(message.data) do
             local entry = self._stateManager:createLogEntryFromList(v)
             -- Check authorize each events
             if self.authorizationHandler(entry, sender) then
@@ -71,7 +74,6 @@ function ListSync:handleMessage(message, distribution, sender)
         local entry = self._stateManager:createLogEntryFromList(message.data)
         if self.authorizationHandler(entry, sender) then
             self._stateManager:queueRemoteEvent(entry)
-            count = count + 1
         else
             print(string.format("Dropping event from sender %s", sender))
         end
@@ -192,7 +194,6 @@ function ListSync:enableSending()
     self.advertiseTicker = C_Timer.NewTicker(10, function()
         -- Get week hash for the last 4 weeks.
         local currentWeek = Util.WeekNumber(Util.time())
-        local hashes = {}
         print("Announcing hashes of last 4 weeks")
         for i = 0, 3 do
             local hash, count = self:weekHash(currentWeek - i)
@@ -208,7 +209,7 @@ function ListSync:enableSending()
 end
 
 function ListSync:disableSending()
-    if self.advertiseTicker ~= nill then
+    if self.advertiseTicker ~= nil then
         self.advertiseTicker:Cancel()
         self.advertiseTicker = nil
     end
@@ -222,7 +223,9 @@ function ListSync:weekEntryIterator(week)
     local entries = sortedList:entries()
 
     return function()
+        -- luacheck: push ignore
         while position ~= nil and position <= #entries do
+            -- luacheck: pop ignore
             local entry = entries[position]
             stateManager:castLogEntry(entry)
             position = position + 1

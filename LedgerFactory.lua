@@ -12,10 +12,6 @@ local StateManager = LibStub("EventSourcing/StateManager")
 
 
 LedgerFactory.createLedger = function(table, send, registerReceiveHandler, authorizationHandler)
-    -- Support calls via : and .
-    if (self ~= nil) then
-        table = self
-    end
     if type(table) ~= "table" then
         error("Must pass a table to LedgerFactory")
     end
@@ -49,7 +45,7 @@ LedgerFactory.createLedger = function(table, send, registerReceiveHandler, autho
         addStateChangedListener = function(callback)
             -- We hide the state manager from this callback
             --
-            stateManager:addStateChangedListener(function(stateManager)
+            stateManager:addStateChangedListener(function(_)
                 local lag, uncommitted = stateManager:lag()
                 return callback(lag, uncommitted)
             end)

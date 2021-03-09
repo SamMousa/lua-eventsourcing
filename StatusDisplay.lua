@@ -1,5 +1,3 @@
-local frame, events = CreateFrame("Frame"), {}
-
 local display = CreateFrame("SimpleHTML", nil, UIParent)
 local template = [[
     <html>
@@ -20,10 +18,10 @@ display:SetMovable(true)
 display:SetScript("OnDragStart", function(self) self:StartMoving() end)
 display:SetScript("OnDragStop", function(self) self:StopMovingOrSizing() end)
 
-
-function updateTestFrameStatus(...)
+local EventSourcing = LibStub("EventSourcing")
+function EventSourcing.updateTestFrameStatus(...)
     local status = ""
-    for i, v in ipairs({...}) do
+    for _, v in ipairs({...}) do
         status = status .. string.format('<p>%s</p><br/>', v)
     end
     display:SetText(string.format(template, status))

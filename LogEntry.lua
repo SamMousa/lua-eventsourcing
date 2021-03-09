@@ -6,6 +6,8 @@ if not LogEntry then
 end
 
 local Util = LibStub("EventSourcing/Util")
+local SortedList = LibStub("EventSourcing/SortedList")
+
 --[[
     LogEntry models an entry in the event log
     We use short field names because the field names are serialized to disk.
@@ -14,6 +16,13 @@ local Util = LibStub("EventSourcing/Util")
 ]]--
 LogEntry.__index = LogEntry
 LogEntry._cls = 'LE'
+
+-- private constructor
+local function constructor(self)
+    local o = {}
+    setmetatable(o, self)
+    return o
+end
 
 function LogEntry:extend(identifier, snapshot)
     local o = constructor(self)
@@ -25,12 +34,6 @@ function LogEntry:extend(identifier, snapshot)
     return o
 end
 
--- private constructor
-function constructor(self)
-    local o = {}
-    setmetatable(o, self)
-    return o
-end
 function LogEntry:new(creator)
     local o = constructor(self)
 

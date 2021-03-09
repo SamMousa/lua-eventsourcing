@@ -2,9 +2,9 @@
     Sorted lists with an insert API
 ]]--
 
-if SortedList == nil then
-    SortedList = {}
-end
+local SortedList, _ = LibStub:NewLibrary("EventSourcing/SortedList", 1)
+if not SortedList then
+    return end
 
 local Util = LibStub("EventSourcing/Util")
 
@@ -14,7 +14,7 @@ local Util = LibStub("EventSourcing/Util")
  @param compare the comparison function to use. This function should return -1 if a < b, 0 if a == b and 1 if a > b.
 ]]--
 function SortedList:new(data, compare, unique)
-    o = {}
+    local o = {}
     setmetatable(o, self)
     self.__index = self
 

@@ -1,7 +1,8 @@
 if (GetTime == nil) then
     require "./wow"
-    require "./modules/LibStub"
+    require "./Libs/LibStub"
     require "Util"
+    require "./SortedList"
     require "./LogEntry"
     require "./source/StartEntry"
     require "./source/PlayerAmountEntry"
@@ -9,29 +10,25 @@ if (GetTime == nil) then
     require "./StateManager"
     require "./ListSync"
     require "./LedgerFactory"
-    require "./string"
-    require "./SortedList"
     math.randomseed(os.time())
 end
---error('disabled')
+
+local EventSourcing, _ = LibStub:NewLibrary("EventSourcing", 1)
+if not EventSourcing then
+    return end
+
 local state = {
     balances = {},
     weeks = {}
 }
 
-if (os == nil) then
-    os = {
-        clock =  GetTimePreciseSec
-    }
-end
-
-Profile = {}
+local Profile = {}
 function Profile:start(name)
-    Profile[name] = os.clock()
+    Profile[name] =  GetTimePreciseSec()
 end
 
 function Profile:stop(name)
-    local elapsed = os.clock() - Profile[name]
+    local elapsed =  GetTimePreciseSec() - Profile[name]
     print(string.format(name .. ": elapsed time: %.2f\n", elapsed))
 end
 
@@ -43,7 +40,7 @@ local PercentageDecayEntry = LibStub("EventSourcing/PercentageDecayEntry")
 
 -- Allows defining fallbacks so we can test outside WoW
 local function LibStubWithStub(library, fallback)
-    result, lib = pcall(LibStub, library)
+    local result, lib = pcall(LibStub, library)
     if result then
         return lib
     elseif type(fallback) == 'function' then
@@ -53,10 +50,10 @@ local function LibStubWithStub(library, fallback)
     end
 end
 
-function createTestData(ledger)
-    guids = {}
+function EventSourcing.createTestData(ledger)
+    local guids = {}
     -- Create 500 guids (think 1 database containing 500 players)
-    for i = 1, 500 do
+    for _ = 1, 500 do
         local player = math.random(2 ^ 31 - 1)
         table.insert(guids, string.format('%08x', player))
     end
@@ -77,8 +74,8 @@ function createTestData(ledger)
         local creator = guids[math.random(1, 10)]
 
         local players = {}
-        for i = 1, math.random(10) do
-            players[#players + 1] = guids[math.random(#guids)]
+        for j = 1, math.random(10) do
+            players[j] = guids[math.random(#guids)]
         end
 
         local entry = PlayerAmountEntry.create(players, math.random(10), creator)
@@ -98,7 +95,7 @@ function createTestData(ledger)
     Profile:stop('Creating data')
 end
 
-function launchTest()
+function EventSourcing.launchTest()
     local AceComm = LibStubWithStub("AceComm-3.0", {
         RegisterComm = function()  end
     })
@@ -138,8 +135,8 @@ function launchTest()
         AceComm:SendCommMessage('ledgertest', compressed, distribution, target, prio, callbackFn, callbackArg)
     end
 
-    ledger = LibStub("EventSourcing/LedgerFactory").createLedger(BigDataSet, send, registerReceiveHandler, function() return true end)
-
+    EventSourcing.ledger = LibStub("EventSourcing/LedgerFactory").createLedger(BigDataSet, send, registerReceiveHandler, function() return true end)
+    local ledger = EventSourcing.ledger
     if (#BigDataSet == 0) then
 --        createTestData(ledger)
     end
@@ -183,7 +180,6 @@ function launchTest()
     end)
 
     ledger.registerMutator(PercentageDecayEntry.class(), function(entry)
-        local creator = entry:creator()
         for player, balance in pairs(state.balances) do
             if (balance > 0) then
                 state.balances[player] = entry:applyDecay(balance)
@@ -196,7 +192,7 @@ function launchTest()
 
     Util.DumpTable(state)
 
-    previousLag = 0
+    local previousLag = 0
     local updateCounter = 0
 
     ledger.addStateChangedListener(function(lag, uncommitted)
@@ -204,9 +200,9 @@ function launchTest()
 
     local stateManager = ledger.getStateManager()
 
-        if (updateTestFrameStatus ~= nil) then
+        if (EventSourcing.updateTestFrameStatus ~= nil) then
             local mydkp = state.balances[UnitGUID("player")] or 0;
-            updateTestFrameStatus(
+            EventSourcing.updateTestFrameStatus(
                 string.format("Lag: %d", lag),
                 string.format("Uncommitted: %d", uncommitted),
                 string.format("Dkp: %d",  mydkp),
@@ -220,7 +216,7 @@ function launchTest()
             print(string.format("State changed, lag is now %d, there are %d entries not committed to the log", lag, uncommitted))
             if previousLag > 0 and lag == 0 then
                 Util.DumpTable(state.dkp_per_creator)
-                for k, v in pairs(state.weeks) do
+                for k, _ in pairs(state.weeks) do
                     print(string.format("Week %d hash: %d", k, ledger.getListSync():weekHash(k)))
                 end
             end
@@ -268,7 +264,7 @@ function launchTest()
 end
 
 if (GetServerTime == nil) then
-    launchTest()
+    EventSourcing.launchTest()
 
 else
     local frame = CreateFrame("Frame")
@@ -276,7 +272,7 @@ else
     frame:SetScript("OnEvent", function(data, event, addon)
         if addon == 'LuaDatabase'then
             BigDataSet = BigDataSet or {}
-            launchTest()
+            EventSourcing.launchTest()
         end
     end)
 end
