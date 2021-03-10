@@ -42,13 +42,21 @@ The initial idea for sync is as follows:
 - When a sender receives this request they broadcast the data for the week.
 
 To prevent a lot of noise we use inhibitors. (NOT FULLY THOUGHT OUT)
-- Don't ever send week data that was sent < x seconds ago
+- Don't send week data that was sent < x seconds ago
+- Don't send week data that someone else with priority will be sending
 - Don't request a week that someone else has requested
 - Don't advertise a hash that someone else has advertised
 
 Then there is the issue of responding to requests on broadcast channels. We don't want every sender to immediately spam the channel
 with data...
-- Instead of immediately sending data, send a small announcement that you'll be sending.
 
+- When announcing that you are able to send a hash include a timestamp.
+- If multiple announcements are sent simultaneously, only the sender with the lowest timestamp (and player name in case of same timestamp) 
+  will start sending data after at 5 seconds.  
 
-To be continued...
+  
+Denial of service
+-----------------
+The consuming addon is responsible for providing secure communication channels.
+Specifically if we can only authorize entries but not sync messages someone can
+block sync by rebroadcasting every advertisement with a lower timestamp and then never sending actual data.
