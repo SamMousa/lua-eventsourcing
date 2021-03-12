@@ -167,6 +167,12 @@ function StateManager:setUpdateInterval(interval)
         end
         self.uncommittedEntries = {}
 
+        -- Skip state updates if we are in combat
+        if (UnitAffectingCombat("player")) then
+            return
+        end
+
+
 
         -- Use a closure here because we don't know what NewTicker does ie if it'll pass a different self
         local success, message = pcall(self.updateState, self)

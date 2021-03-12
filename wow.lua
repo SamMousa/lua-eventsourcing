@@ -54,3 +54,7 @@ end
 function UnitName()
     return "Bob"
 end
+
+function UnitAffectingCombat(target)
+    return false
+end

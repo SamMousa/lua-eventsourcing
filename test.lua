@@ -8,6 +8,9 @@ if (GetTime == nil) then
     require "./source/PlayerAmountEntry"
     require "./source/PercentageDecayEntry"
     require "./StateManager"
+    require "./source/Message"
+    require "./source/AdvertiseHashMessage"
+    require "./source/WeekDataMessage"
     require "./ListSync"
     require "./LedgerFactory"
     math.randomseed(os.time())
