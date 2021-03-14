@@ -11,7 +11,7 @@ local LogEntry = LibStub("EventSourcing/LogEntry")
 local TextMessageEntry = LogEntry:extend('TME')
 
 function TextMessageEntry:new(message)
-    local o = LogEntry.new(self, creator)
+    local o = LogEntry.new(self)
     o.m = message
     return o
 end

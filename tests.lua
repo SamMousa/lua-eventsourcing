@@ -53,3 +53,4 @@ end)
 
 subject = StartEntry.create(1234)
 assertSame(subject:creator(), 1234)
+assertTrue(true)

@@ -26,7 +26,6 @@ local state = {
     messages = {}
 }
 
-ledgerState = state
 local Profile = {}
 function Profile:start(name)
     Profile[name] =  GetTimePreciseSec()

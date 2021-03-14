@@ -122,16 +122,6 @@ local function handleRequestWeekMessage(message, sender, distribution, stateMana
 --    end
 end
 
-local function handleSingleEntryMessage(message, sender, distribution, stateManager, listSync)
-    -- todo
---   elseif message.type == "singleEntry" then
-    --        local entry = self._stateManager:createLogEntryFromList(message.data)
-    --        if self.authorizationHandler(entry, sender) then
-    --            self._stateManager:queueRemoteEvent(entry)
-    --        else
-    --            print(string.format("Dropping event from sender %s", sender))
-    --        end
-end
 
 local function handleMessage(self, message, distribution, sender)
     if not Message.cast(message) then
@@ -231,39 +221,13 @@ function ListSync:transmitViaGuild(entry)
 end
 
 
-local bars = {}
-
 function ListSync:send(message, distribution, target)
-    local statusbar = CreateFrame("StatusBar", nil, UIParent)
-
-    table.insert(bars, statusbar)
-    local stackSize = #bars
-    statusbar:SetWidth(100)
-    statusbar:SetPoint("BOTTOMRIGHT", UIParent, "BOTTOMRIGHT", 0, 50 + #bars * 10)
-    statusbar:SetPoint("CENTER", UIParent)
-
-    statusbar:SetHeight(10)
-    statusbar:SetStatusBarTexture("Interface\\TARGETINGFRAME\\UI-StatusBar")
-    statusbar:GetStatusBarTexture():SetHorizTile(false)
-    statusbar:GetStatusBarTexture():SetVertTile(false)
-    statusbar:SetStatusBarColor(0, 0.65, 0)
-    statusbar:SetMinMaxValues(0, 100)
-    statusbar:SetValue(1)
-    statusbar:Show()
     self.sendAddonMessage(message, distribution, target, "BULK", function(_, sent, total)
-        print(sent, total)
-        if sent == total then
-            statusbar:Hide()
-            return
-        end
-        statusbar:SetMinMaxValues(0, total)
-        statusbar:SetValue(sent)
-
+        print(string.format("Sending data %d out of %d", sent, total))
     end)
 end
 
 function ListSync:weekSyncViaWhisper(target, week)
-    local data = {}
     local message = WeekDataMessage.create(week, self:weekHash(week))
     for entry in self:weekEntryIterator(week) do
         message:addEntry(self._stateManager:createListFromEntry(entry))
@@ -272,7 +236,6 @@ function ListSync:weekSyncViaWhisper(target, week)
 end
 
 function ListSync:weekSyncViaGuild(week)
-    local data = {}
     local message = WeekDataMessage.create(week, self:weekHash(week))
     for entry in self:weekEntryIterator(week) do
         message:addEntry(self._stateManager:createListFromEntry(entry))
