@@ -4,15 +4,6 @@ on:
     tags:
       - 'v*'
 jobs:
-  lint:
-    name: Run luacheck
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v2
-      - name: luacheck
-        uses: nebularg/actions-luacheck@v1.1.0
-        with:
-          files: .
   build:
     name: Build package
     runs-on: ubuntu-latest
@@ -22,11 +13,7 @@ jobs:
         run: pipx install gitman
       - name: install dependencies
         run: gitman install
-  release:
-    name: Create release
-    runs-on: ubuntu-latest
-    needs: [build]
-    steps:
+      - run: zip -r LuaDatabase.zip .
       - name: Create GitHub release
         uses: Roang-zero1/github-create-release-action@master
         with:
@@ -34,7 +21,6 @@ jobs:
           prerelease_regex: "^v0\\.[[:digit:]]+\\.[[:digit:]]+"
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-      - run: zip -r LuaDatabase.zip .
       - name: Upload artifact
         uses: Shopify/upload-to-release@v1.0.1
         with:
