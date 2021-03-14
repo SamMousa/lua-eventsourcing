@@ -8,6 +8,7 @@ end
 local ListSync = LibStub("EventSourcing/ListSync")
 local LogEntry = LibStub("EventSourcing/LogEntry")
 local StateManager = LibStub("EventSourcing/StateManager")
+local TextMessageEntry = LibStub("EventSourcing/TextMessageEntry")
 
 
 
@@ -21,7 +22,7 @@ LedgerFactory.createLedger = function(table, send, registerReceiveHandler, autho
     local listSync = ListSync:new(stateManager, send, registerReceiveHandler, authorizationHandler)
 
     stateManager:setUpdateInterval(500)
-    stateManager:setBatchSize(10)
+    stateManager:setBatchSize(50)
 
     return {
         getListSync = function()
@@ -34,6 +35,7 @@ LedgerFactory.createLedger = function(table, send, registerReceiveHandler, autho
             stateManager:registerHandler(metatable, mutatorFunc)
         end,
         submitEntry = function(entry)
+            listSync:transmitViaGuild(entry)
             return sortedList:uniqueInsert(entry)
         end,
         reset = function()
@@ -55,6 +57,11 @@ LedgerFactory.createLedger = function(table, send, registerReceiveHandler, autho
         end,
         disableSending = function()
             listSync:disableSending()
+        end,
+        sendMessage = function(message)
+            local entry = TextMessageEntry.create(message)
+            listSync:transmitViaGuild(entry)
+            return sortedList:uniqueInsert(entry)
         end
 
 

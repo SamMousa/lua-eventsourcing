@@ -41,11 +41,9 @@ function LogEntry:new(creator)
 
     o.t = Util.time()
     if creator == nil then
-        print("Missing mandatory argument 'creator'")
-        error("Missing mandatory argument 'creator'")
+        o.c = Util.getIntegerGuid("player")
     elseif type(creator) == 'string' then
-        -- check length.
-        o.c = tonumber(string.sub(creator, -8), 16)
+        o.c = Util.getIntegerGuid(creator)
         if (o.c == nil) then
             error(string.format("Failed to convert string `%s` into number", creator))
         end

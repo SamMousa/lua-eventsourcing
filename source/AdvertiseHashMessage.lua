@@ -17,6 +17,9 @@ end
 function AdvertiseHashMessage:addHash(week, hash, count)
     self.hashes[#self.hashes + 1] = {week, hash, count}
 end
+function AdvertiseHashMessage:hashCount()
+    return #self.hashes
+end
 
 function Factory.create()
     return AdvertiseHashMessage:new()

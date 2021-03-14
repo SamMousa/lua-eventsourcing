@@ -147,7 +147,15 @@ function Util.UUID()
     return hex
 end
 
-
+function Util.wipe(data)
+    if (table.wipe) then
+        table.wipe(data)
+    else
+        for k, _ in pairs(data) do
+            data[k] = nil
+        end
+    end
+end
 
 
 function Util.TestBinarySearch()
@@ -221,9 +229,7 @@ function Util.IntegerChecksumCoroutine()
 
             a = (a + b4) % 65521
             b = (b + a) % 65521
-
             next = coroutine.yield(b * 65536 + a)
-
         end
     end)
 end
@@ -240,6 +246,15 @@ function Util.random(length, alternativeCharset)
         result = result .. charset.sub(charset, i, i)
     end
     return result
+end
+
+function Util.getIntegerGuid(target)
+    return tonumber(string.sub(UnitGUID(target), -8), 16)
+end
+
+local GUIDPrefix = string.sub(UnitGUID("Player"), 1, -8)
+function Util.getGuidFromInteger(int)
+    return GUIDPrefix .. string.format("%08x", int)
 end
 
 function Util.guid()

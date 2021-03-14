@@ -6,28 +6,40 @@ local ListSync, _ = LibStub:NewLibrary("EventSourcing/ListSync", 1)
 if not ListSync then
 return end
 
-local MESSAGE = {
-    WEEKHASH = 'weekhash',
-    REQUESTWEEK = "requestweek"
-}
 local StateManager = LibStub("EventSourcing/StateManager")
 local LogEntry = LibStub("EventSourcing/LogEntry")
 local Util = LibStub("EventSourcing/Util")
 local AdvertiseHashMessage = LibStub("EventSourcing/Message/AdvertiseHash")
 local WeekDataMessage = LibStub("EventSourcing/Message/WeekData")
+local RequestWeekMessage = LibStub("EventSourcing/Message/RequestWeek")
+local BulkDataMessage = LibStub("EventSourcing/Message/BulkData")
 local Message = LibStub("EventSourcing/Message")
 
+local function advertiseWeekHashInhibitorSet(listSync, week)
+    local messageType = AdvertiseHashMessage.type()
+    local now = GetTime()
+    listSync.inhibitors[messageType][week] = now + listSync.inhibitorTimes[messageType]
+end
 
-local function handleAdvertiseMessage(message)
+local function requestWeekInhibitorSet(listSync, week)
+    local messageType = RequestWeekMessage.type()
+    local now = GetTime()
+    listSync.inhibitors[messageType][week] = now + listSync.inhibitorTimes[messageType]
+end
+
+local function handleAdvertiseMessage(message, sender, distribution, stateManager, listSync)
     for _, weekHashCount in message.hashes do
+        -- If sender has priority over us we remove our advertisement, this will prevent us from sending data.
+        if sender < listSync.playerName then
+            listSync.advertisedWeeks[weekHashCount[1]] = nil
+        end
 
-        local hash, count = self:weekHash(value[1])
+        local hash, count = listSync:weekHash(weekHashCount[1])
+        advertiseWeekHashInhibitorSet(listSync, weekHashCount[1])
         if  hash == weekHashCount[2] and count == weekHashCount[3] then
             print(string.format("Received week hash from %s, we are in sync", sender))
         else
             print(string.format("Received week hash from %s, we are NOT in sync", sender))
-            -- TODO: requestweek
-
         end
     end
 end
@@ -47,7 +59,37 @@ local function handleWeekDataMessage(message, sender, distribution, stateManager
     print(string.format("Enqueued %d events from remote received from %s via %s", count, sender, distribution))
 end
 
+local function handleBulkDataMessage(message, sender, distribution, stateManager, listSync)
+    local count = 0
+    for _, v in ipairs(message.entries) do
+        local entry = stateManager:createLogEntryFromList(v)
+        -- Authorize each event
+        if listSync.authorizationHandler(entry, sender) then
+            stateManager:queueRemoteEvent(entry)
+            count = count + 1
+        else
+            print(string.format("Dropping event from sender %s", sender))
+        end
+    end
+    print(string.format("Enqueued %d events from remote received from %s via %s", count, sender, distribution))
+end
+
 local function handleRequestWeekMessage(message, sender, distribution, stateManager, listSync)
+    if distribution == "GUILD" and not listSync:isSendingEnabled() then
+        -- We are not sending, but we do need to make sure to not request the same week
+        requestWeekInhibitorSet(listSync, message.week)
+    elseif distribution == "GUILD" and listSync:isSendingEnabled() then
+        C_Timer.After(5, function()
+            -- check advertisements after delay, someone might have advertised after us and still gained priority
+            if listSync.advertisedWeeks[message.week] > GetTime() then
+                listSync:weekSyncViaGuild(message.week)
+            end
+        end)
+
+    elseif distribution == "WHISPER" then
+        listSync:weekSyncViaWhisper(sender, message.week)
+    end
+
 -- todo
 --
 --    elseif self:isSendingEnabled() and message.type == MESSAGE.REQUESTWEEK then
@@ -81,6 +123,38 @@ local function handleSingleEntryMessage(message, sender, distribution, stateMana
     --        end
 end
 
+local function handleMessage(self, message, distribution, sender)
+    if not Message.cast(message) then
+        print(string.format("Ignoring invalid message from %s", sender))
+        return
+    end
+
+    if sender == self.playerName then
+        print("Ignoring message from self")
+        return
+    end
+
+    -- We use pairs() because we don't care about order.
+    -- This allows us to insert handlers with a key (and to easily remove them later)
+    for _, handler in pairs(self.messageHandlers[message.type] or {}) do
+        handler(message, sender, distribution, self._stateManager, self)
+    end
+end
+
+-- Checks if this week hash advertisement is inhibited, if not adds an inhibition.
+-- returns true if we are allowed to advertise
+local function advertiseWeekHashInhibitorCheckOrSet(listSync, week)
+    local messageType = AdvertiseHashMessage.type()
+    local now = GetTime()
+    if listSync.inhibitors[messageType][week] == nil
+        or listSync.inhibitors[messageType][week] < now then
+        advertiseWeekHashInhibitorSet(listSync, week)
+        return true
+    end
+    return false
+end
+
+
 
 function ListSync:new(stateManager, sendAddonMessage, registerReceiveHandler, authorizationHandler)
     if getmetatable(stateManager) ~= StateManager then
@@ -105,73 +179,76 @@ function ListSync:new(stateManager, sendAddonMessage, registerReceiveHandler, au
     }
     o.playerName = UnitName("player")
     registerReceiveHandler(function(message, distribution, sender)
-        o:handleMessage(message, distribution, sender)
+        handleMessage(o, message, distribution, sender)
     end)
 
     o.messageHandlers = {}
     o.messageHandlers[AdvertiseHashMessage.type()] = { handleAdvertiseMessage }
     o.messageHandlers[WeekDataMessage.type()] = { handleWeekDataMessage }
+    o.messageHandlers[BulkDataMessage.type()] = { handleBulkDataMessage }
+    o.messageHandlers[RequestWeekMessage.type()] = { handleRequestWeekMessage }
+    o.inhibitors = {}
+    -- Inhibitor for sending hash advertisements, format is week => timestamp inhibition ends
+    o.inhibitors[AdvertiseHashMessage.type()] = {}
+    -- Inhibitor for sending week requests, format is week => timestamp inhibition ends
+    o.inhibitors[RequestWeekMessage.type()] = {}
 
+    -- Inhibitor for sending week data, format is week .. hash => timestamp inhibition ends
+    o.inhibitors[WeekDataMessage.type()] = {}
+
+    o.inhibitorTimes = {}
+    -- Send a week hash at most once every 30 seconds
+    o.inhibitorTimes[AdvertiseHashMessage.type()] = 30
+    -- Request week data at most once every 30 seconds
+    o.inhibitorTimes[RequestWeekMessage.type()] = 30
+    -- Send week data at most once every 30 seconds
+    o.inhibitorTimes[WeekDataMessage.type()] = 30
+
+    -- Format week => timestamp, advertisements are valid for a limited time only
+    o.advertisedWeeks = {}
     return o
 end
 
-
-function ListSync:handleMessage(message, distribution, sender)
-    if not Message.cast(message) then
-        print(string.format("Ignoring invalid message from %s", sender))
-        return
-    end
-
-    if sender == self.playerName then
-        print("Ignoring message from self")
-        return
-    end
-
-    -- We use pairs() because we don't care about order.
-    -- This allows us to insert handlers with a key (and to easily remove them later)
-    for _, handler in pairs(self.messageHandlers[message.type] or {}) do
-        handler(message, sender, distribution, self._stateManager, self)
-    end
-end
 --[[
     Sends an entry out over the guild channel, if allowed
 ]]--
 function ListSync:transmitViaGuild(entry)
     if self.authorizationHandler(entry, UnitName("player")) then
-        self:send({
-            type = "singleEntry",
-            data = entry:toList()
-        }, "GUILD")
+        local message = BulkDataMessage.create()
+        message:addEntry(self._stateManager:createListFromEntry(entry))
+        self:send(message, "GUILD")
     end
 end
 
 
---[[
-    Full sync via whisper, we don't use the authorizationCallback here.
-    In case it is initiated by the sender the receiver will discard messages.
-    In case it is initiated by the receiver they might temporarily trust the sender and we should just send all data.
-    This could also be used for deep data validation in the future.
-]]--
-function ListSync:fullSyncViaWhisper(target)
-    local data = {}
-    for _, v in ipairs(self._stateManager:getSortedList():entries()) do
-        self._stateManager:castLogEntry(v)
-        local list = v:toList()
-        table.insert(list, v:class())
-        table.insert(data, list)
-    end
-    local message = {
-        type = "fullSync",
-        data = data
-    }
-    self:send(message, "WHISPER", target)
-
-end
-
+local bars = {}
 
 function ListSync:send(message, distribution, target)
+    local statusbar = CreateFrame("StatusBar", nil, UIParent)
+
+    table.insert(bars, statusbar)
+    local stackSize = #bars
+    statusbar:SetWidth(100)
+    statusbar:SetPoint("BOTTOMRIGHT", UIParent, "BOTTOMRIGHT", 0, 50 + #bars * 10)
+    statusbar:SetPoint("CENTER", UIParent)
+
+    statusbar:SetHeight(10)
+    statusbar:SetStatusBarTexture("Interface\\TARGETINGFRAME\\UI-StatusBar")
+    statusbar:GetStatusBarTexture():SetHorizTile(false)
+    statusbar:GetStatusBarTexture():SetVertTile(false)
+    statusbar:SetStatusBarColor(0, 0.65, 0)
+    statusbar:SetMinMaxValues(0, 100)
+    statusbar:SetValue(1)
+    statusbar:Show()
     self.sendAddonMessage(message, distribution, target, "BULK", function(_, sent, total)
-        print(string.format("Sent %d of %d", sent, total))
+        print(sent, total)
+        if sent == total then
+            statusbar:Hide()
+            return
+        end
+        statusbar:SetMinMaxValues(0, total)
+        statusbar:SetValue(sent)
+
     end)
 end
 
@@ -184,18 +261,22 @@ function ListSync:weekSyncViaWhisper(target, week)
     self:send(message, "WHISPER", target)
 end
 
-function ListSync:fullSyncViaWhisper(target)
+function ListSync:weekSyncViaGuild(week)
     local data = {}
-    for _, v in ipairs(self._stateManager:getSortedList():entries()) do
-        table.insert(data, self._stateManager:createListFromEntry(v))
+    local message = WeekDataMessage.create(week, self:weekHash(week))
+    for entry in self:weekEntryIterator(week) do
+        message:addEntry(self._stateManager:createListFromEntry(entry))
     end
-    local message = {
-        type = "bulkSync",
-        data = data
-    }
-    self.sendAddonMessage(message, "WHISPER", target, "BULK", function(_, sent, total)
-        print(string.format("Sent %d of %d", sent, total))
-    end)
+    self:send(message, "GUILD")
+end
+
+function ListSync:fullSyncViaWhisper(target)
+    local message = BulkDataMessage.create()
+    for _, v in ipairs(self._stateManager:getSortedList():entries()) do
+        message:addEntry(self._stateManager:createListFromEntry(v))
+    end
+
+    self:send(message, "WHISPER", target);
 end
 
 function ListSync:isSendingEnabled()
@@ -205,14 +286,23 @@ end
 function ListSync:enableSending()
     -- Start advertisements of our latest hashes.
     self.advertiseTicker = C_Timer.NewTicker(10, function()
+
         -- Get week hash for the last 4 weeks.
-        local currentWeek = Util.WeekNumber(Util.time())
+        local now = GetTime()
+        local currentWeek = Util.WeekNumber(now)
         print("Announcing hashes of last 4 weeks")
         local message = AdvertiseHashMessage.create()
         for i = 0, 3 do
-            local hash, count = self:weekHash(currentWeek - i)
-            message:addHash(currentWeek - 1, hash, count)
+            if (advertiseWeekHashInhibitorCheckOrSet(self, currentWeek - i)) then
+                local hash, count = self:weekHash(currentWeek - i)
+                message:addHash(currentWeek - 1, hash, count)
+                self.advertisedWeeks[currentWeek - 1] = now + 30
+            end
+        end
+        if (message:hashCount() > 0) then
             self:send(message, "GUILD")
+        else
+            print("Skipping due to inhibition")
         end
     end)
 end
@@ -267,6 +357,10 @@ function ListSync:weekHash(week)
     if self._weekHashCache.entries[week] == nil then
         for entry in self:weekEntryIterator(week) do
             result, hash = coroutine.resume(adler32, LogEntry.time(entry))
+            if not result then
+                error(hash)
+            end
+            result, hash = coroutine.resume(adler32, LogEntry.creator(entry))
             count = count + 1
             if not result then
                 error(hash)

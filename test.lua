@@ -9,8 +9,8 @@ if (GetTime == nil) then
     require "./source/PercentageDecayEntry"
     require "./StateManager"
     require "./source/Message"
-    require "./source/AdvertiseHashMessage"
-    require "./source/WeekDataMessage"
+    require "./source/Message/AdvertiseHash"
+    require "./source/Message/WeekData"
     require "./ListSync"
     require "./LedgerFactory"
     math.randomseed(os.time())
@@ -22,9 +22,11 @@ if not EventSourcing then
 
 local state = {
     balances = {},
-    weeks = {}
+    weeks = {},
+    messages = {}
 }
 
+ledgerState = state
 local Profile = {}
 function Profile:start(name)
     Profile[name] =  GetTimePreciseSec()
@@ -37,8 +39,10 @@ end
 
 local PlayerAmountEntry = LibStub("EventSourcing/PlayerAmountEntry")
 local StartEntry = LibStub("EventSourcing/StartEntry")
+local TextMessageEntry = LibStub("EventSourcing/TextMessageEntry")
 local Util = LibStub("EventSourcing/Util")
 
+local ScrollingTable = LibStub("ScrollingTable");
 local PercentageDecayEntry = LibStub("EventSourcing/PercentageDecayEntry")
 
 -- Allows defining fallbacks so we can test outside WoW
@@ -53,7 +57,8 @@ local function LibStubWithStub(library, fallback)
     end
 end
 
-function EventSourcing.createTestData(ledger)
+function EventSourcing.createTestData()
+    local ledger = EventSourcing.ledger
     local guids = {}
     -- Create 500 guids (think 1 database containing 500 players)
     for _ = 1, 500 do
@@ -148,20 +153,25 @@ function EventSourcing.launchTest()
 
 
 
-
+    ledger.registerMutator(TextMessageEntry.class(), function(entry)
+        local _, _, _, _, _, name, _ = GetPlayerInfoByGUID(Util.getGuidFromInteger(entry:creator()))
+        table.insert(state.messages, {
+            date("%m/%d/%y %H:%M:%S", entry:time()),
+            name,
+            entry:message(),
+        })
+    end)
     ledger.registerMutator(StartEntry.class(), function(entry)
-        state = {
-            balances = {},
-            weeks = {}
-        }
+        Util.wipe(state.messages)
+        Util.wipe(state.balances)
+        Util.wipe(state.weeks)
         print("Start entry handled")
     end)
 
     ledger.addStateRestartListener(function()
-        state = {
-            balances = {},
-            weeks = {}
-        }
+        Util.wipe(state.messages)
+        Util.wipe(state.balances)
+        Util.wipe(state.weeks)
         print("State restarted")
     end)
     ledger.registerMutator(PlayerAmountEntry.class(), function(entry)
@@ -198,11 +208,38 @@ function EventSourcing.launchTest()
     local previousLag = 0
     local updateCounter = 0
 
+
+    local scrollingTable = ScrollingTable:CreateST({
+        {
+            name="Timestamp",
+            width=150
+        },
+        {
+            name="Sender",
+            width=100
+        },
+        {
+            name="Message",
+            width=300
+        }
+    })
+    local display = scrollingTable.frame
+    display:SetPoint("CENTER", UIParent)
+    display:SetHeight(200)
+    display:Show()
+    display:RegisterForDrag("Leftbutton")
+    display:EnableMouse(true)
+    display:SetMovable(true)
+    display:SetScript("OnDragStart", function(self) self:StartMoving() end)
+    display:SetScript("OnDragStop", function(self) self:StopMovingOrSizing() end)
+    scrollingTable:SetData(state.messages, true)
+    SLASH_LEDGERCHAT1 = "/ledgerchat"
+    SlashCmdList["LEDGERCHAT"] = ledger.sendMessage
     ledger.addStateChangedListener(function(lag, uncommitted)
         updateCounter = updateCounter + 1
 
-    local stateManager = ledger.getStateManager()
-
+        local stateManager = ledger.getStateManager()
+        scrollingTable:SortData()
         if (EventSourcing.updateTestFrameStatus ~= nil) then
             local mydkp = state.balances[UnitGUID("player")] or 0;
             EventSourcing.updateTestFrameStatus(
@@ -213,7 +250,9 @@ function EventSourcing.launchTest()
                 string.format("Batchsize: %d", stateManager:getBatchSize()),
                 string.format("Interval (measured): %d", stateManager:getUpdateInterval()),
                 string.format("Log length: %d", stateManager:logSize()),
-                string.format("Update counter: %d", updateCounter)
+                string.format("Update counter: %d", updateCounter),
+                -- hash > 32bit signed int allows
+                string.format("Hash: %s", stateManager:stateHash())
             )
         else
             print(string.format("State changed, lag is now %d, there are %d entries not committed to the log", lag, uncommitted))

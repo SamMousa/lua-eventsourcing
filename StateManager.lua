@@ -10,6 +10,8 @@ if not StateManager then
     return
 end
 
+local Util = LibStub("EventSourcing/Util")
+local LogEntry = LibStub("EventSourcing/LogEntry")
 -- PRIVATE FUNCTIONS
 local EVENT = {
     STATE_CHANGED = 'state',
@@ -50,6 +52,8 @@ function StateManager:new(list)
 
     o.lastAppliedIndex = 0
     o.lastAppliedEntry = nil
+    o.stateCheckSum = 0
+    o.checksumCoroutine = Util.IntegerChecksumCoroutine()
     return o
 end
 
@@ -172,11 +176,9 @@ function StateManager:setUpdateInterval(interval)
             return
         end
 
-
-
-        -- Use a closure here because we don't know what NewTicker does ie if it'll pass a different self
         local success, message = pcall(self.updateState, self)
         if (not success) then
+            error(message)
             print(message)
             self.errorCount = self.errorCount + 1
         else
@@ -203,6 +205,7 @@ end
 function StateManager:updateState()
     local entries = self.list:entries()
     local applied = 0
+    local result, hash
     if self.lastAppliedIndex > #entries
         or (self.lastAppliedEntry ~= nil and entries[self.lastAppliedIndex] ~= self.lastAppliedEntry)
     then
@@ -218,6 +221,15 @@ function StateManager:updateState()
         self.handlers[entry:class()](entry)
         self.lastAppliedIndex = self.lastAppliedIndex + 1
         self.lastAppliedEntry = entry
+        result, hash = coroutine.resume(self.checksumCoroutine, LogEntry.time(entry))
+        if not result then
+            error("Error updating state hash: " .. hash)
+        end
+        result, hash = coroutine.resume(self.checksumCoroutine, LogEntry.creator(entry))
+        if not result then
+            error("Error updating state hash: " .. hash)
+        end
+        self.stateCheckSum = hash
         applied = applied + 1
     end
     if applied > 0 or true then
@@ -241,6 +253,9 @@ function StateManager:reset()
     self.list:wipe()
 end
 
+function StateManager:stateHash()
+    return self.stateCheckSum
+end
 function StateManager:trigger(event)
     for _, callback in ipairs(self.listeners[event] or {}) do
         -- trigger callback, pass state manager

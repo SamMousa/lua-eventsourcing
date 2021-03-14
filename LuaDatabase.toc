@@ -2,12 +2,11 @@
 ## Title: Database
 ## Author: Sam Mousa
 ## Version: 1.0
-
 ##SavedVariables: BigDataSet
-modules\LibStub.lua
+Libs\LibStub.lua
+Libs\lib-st\Core.lua
 LibDeflate\LibDeflate.lua
 LibSerialize\LibSerialize.lua
-string.lua
 Util.lua
 Database.lua
 SortedList.lua
@@ -15,9 +14,16 @@ LogEntry.lua
 source\StartEntry.lua
 source\PlayerAmountEntry.lua
 source\PercentageDecayEntry.lua
+source\TextMessageEntry.lua
 StateManager.lua
+source\Message.lua
+source\AdvertiseHashMessage.lua
+source\WeekDataMessage.lua
+source\BulkDataMessage.lua
+source\RequestWeekMessage.lua
 ListSync.lua
 
 LedgerFactory.lua
-StatusDisplay.lua
+
 test.lua
+StatusDisplay.lua

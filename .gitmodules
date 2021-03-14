@@ -4,3 +4,6 @@
 [submodule "LibDeflate"]
 	path = LibDeflate
 	url = git@github.com:SafeteeWoW/LibDeflate.git
+[submodule "ScrollingTable"]
+	path = libs/lib-st
+	url = git@github.com:ddumont/lib-st.git
