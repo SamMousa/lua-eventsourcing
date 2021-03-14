@@ -1,0 +1,43 @@
+name: Build addon archive
+on:
+  push:
+    tags:
+      - 'v*'
+jobs:
+  lint:
+    name: Run luacheck
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v2
+      - name: luacheck
+        uses: nebularg/actions-luacheck@v1.1.0
+        with:
+          files: .
+  build:
+    name: Build package
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v2
+      - name: install gitman
+        run: pipx install gitman
+      - name: install dependencies
+        run: gitman install
+  release:
+    name: Create release
+    runs-on: ubuntu-latest
+    needs: [build]
+    steps:
+      - name: Create GitHub release
+        uses: Roang-zero1/github-create-release-action@master
+        with:
+          version_regex: ^v[[:digit:]]+\.[[:digit:]]+\.[[:digit:]]+
+          prerelease_regex: "^v0\\.[[:digit:]]+\\.[[:digit:]]+"
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      - name: Create GitHub release
+        uses: Roang-zero1/github-upload-release-artifacts-action@master
+        with:
+          args:
+            - "."
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
