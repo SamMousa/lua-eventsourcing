@@ -18,10 +18,10 @@ jobs:
       - name: Find and Replace
         uses: jacobtomlinson/gha-find-replace@master
         with:
-          find: "{$VERSION}"
+          find: "{VERSION}"
           include: LuaDatabase.toc
           replace: "${{ env.RELEASE_VERSION }}"
-      - run: zip -r LuaDatabase.zip .
+      - run: zip -r LuaDatabase.zip . --exclude="*.git*
       - name: Create GitHub release
         uses: Roang-zero1/github-create-release-action@master
         with:
