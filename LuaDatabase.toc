@@ -1,7 +1,7 @@
 ## Interface: 11305
 ## Title: Database
 ## Author: Sam Mousa
-## Version: 1.0
+## Version: {$VERSION}
 ##SavedVariables: BigDataSet
 Libs\LibStub.lua
 Libs\LibDeflate\LibDeflate.lua
