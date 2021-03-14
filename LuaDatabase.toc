@@ -4,7 +4,10 @@
 ## Version: 1.0
 ##SavedVariables: BigDataSet
 Libs\LibStub.lua
-Libs\lib-st\Core.lua
+Libs\LibDeflate\Core.lua
+Libs\LibSerialize\LibSerialize.lua
+Libs\LibScrollingTable\Core.lua
+
 LibDeflate\LibDeflate.lua
 LibSerialize\LibSerialize.lua
 Util.lua
