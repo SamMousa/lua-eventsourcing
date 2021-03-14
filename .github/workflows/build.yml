@@ -34,10 +34,10 @@ jobs:
           prerelease_regex: "^v0\\.[[:digit:]]+\\.[[:digit:]]+"
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-      - name: Create GitHub release
-        uses: Roang-zero1/github-upload-release-artifacts-action@master
+      - run: zip -r LuaDatabase.zip .
+      - name: Upload artifact
+        uses: Shopify/upload-to-release@v1
         with:
-          args:
-            - "."
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          name: LuaDatabase
+          path: LuaDatabase.zip
+          repo-token: ${{ secrets.GITHUB_TOKEN }}
