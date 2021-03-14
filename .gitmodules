@@ -1,9 +1,0 @@
-[submodule "LibSerialize"]
-	path = Libs/LibSerialize
-	url = git@github.com:rossnichols/LibSerialize.git
-[submodule "LibDeflate"]
-	path = Libs/LibDeflate
-	url = git@github.com:SafeteeWoW/LibDeflate.git
-[submodule "LibScrollingTable"]
-	path = Libs/LibScrollingTable
-	url = git@github.com:ddumont/lib-st.git

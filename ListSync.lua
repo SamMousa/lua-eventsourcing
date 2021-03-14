@@ -17,18 +17,25 @@ local Message = LibStub("EventSourcing/Message")
 
 local function advertiseWeekHashInhibitorSet(listSync, week)
     local messageType = AdvertiseHashMessage.type()
-    local now = GetTime()
+    local now = GetServerTime()
     listSync.inhibitors[messageType][week] = now + listSync.inhibitorTimes[messageType]
 end
 
 local function requestWeekInhibitorSet(listSync, week)
     local messageType = RequestWeekMessage.type()
-    local now = GetTime()
+    local now = GetServerTime()
     listSync.inhibitors[messageType][week] = now + listSync.inhibitorTimes[messageType]
 end
 
+local function requestWeekInhibitorCheck(listSync, week)
+    local messageType = RequestWeekMessage.type()
+    return listSync.inhibitors[messageType][week] == nil
+            or listSync.inhibitors[messageType][week] < GetServerTime()
+end
+
 local function handleAdvertiseMessage(message, sender, distribution, stateManager, listSync)
-    for _, weekHashCount in message.hashes do
+    for _, weekHashCount in ipairs(message.hashes) do
+
         -- If sender has priority over us we remove our advertisement, this will prevent us from sending data.
         if sender < listSync.playerName then
             listSync.advertisedWeeks[weekHashCount[1]] = nil
@@ -36,10 +43,13 @@ local function handleAdvertiseMessage(message, sender, distribution, stateManage
 
         local hash, count = listSync:weekHash(weekHashCount[1])
         advertiseWeekHashInhibitorSet(listSync, weekHashCount[1])
+        Util.DumpTable(weekHashCount)
         if  hash == weekHashCount[2] and count == weekHashCount[3] then
-            print(string.format("Received week hash from %s, we are in sync", sender))
-        else
-            print(string.format("Received week hash from %s, we are NOT in sync", sender))
+            print(string.format("Received week %s hash from %s, we are in sync", weekHashCount[1], sender))
+        elseif requestWeekInhibitorCheck(listSync, weekHashCount[1]) then
+            print(string.format("Requesting data for week %s", weekHashCount[1]))
+            requestWeekInhibitorSet(listSync, weekHashCount[1])
+            listSync:send(RequestWeekMessage.create(weekHashCount[1]), "GUILD")
         end
     end
 end
@@ -56,7 +66,7 @@ local function handleWeekDataMessage(message, sender, distribution, stateManager
             print(string.format("Dropping event from sender %s", sender))
         end
     end
-    print(string.format("Enqueued %d events from remote received from %s via %s", count, sender, distribution))
+    print(string.format("Enqueued %d events for week %s from remote received from %s via %s", count, message.week, sender, distribution))
 end
 
 local function handleBulkDataMessage(message, sender, distribution, stateManager, listSync)
@@ -81,7 +91,7 @@ local function handleRequestWeekMessage(message, sender, distribution, stateMana
     elseif distribution == "GUILD" and listSync:isSendingEnabled() then
         C_Timer.After(5, function()
             -- check advertisements after delay, someone might have advertised after us and still gained priority
-            if listSync.advertisedWeeks[message.week] > GetTime() then
+            if listSync.advertisedWeeks[message.week] > GetServerTime() then
                 listSync:weekSyncViaGuild(message.week)
             end
         end)
@@ -145,7 +155,7 @@ end
 -- returns true if we are allowed to advertise
 local function advertiseWeekHashInhibitorCheckOrSet(listSync, week)
     local messageType = AdvertiseHashMessage.type()
-    local now = GetTime()
+    local now = GetServerTime()
     if listSync.inhibitors[messageType][week] == nil
         or listSync.inhibitors[messageType][week] < now then
         advertiseWeekHashInhibitorSet(listSync, week)
@@ -288,15 +298,15 @@ function ListSync:enableSending()
     self.advertiseTicker = C_Timer.NewTicker(10, function()
 
         -- Get week hash for the last 4 weeks.
-        local now = GetTime()
+        local now = GetServerTime()
         local currentWeek = Util.WeekNumber(now)
         print("Announcing hashes of last 4 weeks")
         local message = AdvertiseHashMessage.create()
         for i = 0, 3 do
             if (advertiseWeekHashInhibitorCheckOrSet(self, currentWeek - i)) then
                 local hash, count = self:weekHash(currentWeek - i)
-                message:addHash(currentWeek - 1, hash, count)
-                self.advertisedWeeks[currentWeek - 1] = now + 30
+                message:addHash(currentWeek - i, hash, count)
+                self.advertisedWeeks[currentWeek - i] = now + 30
             end
         end
         if (message:hashCount() > 0) then
@@ -361,10 +371,11 @@ function ListSync:weekHash(week)
                 error(hash)
             end
             result, hash = coroutine.resume(adler32, LogEntry.creator(entry))
-            count = count + 1
             if not result then
                 error(hash)
             end
+            count = count + 1
+
         end
         self._weekHashCache.entries[week] = {hash or 0, count }
     end

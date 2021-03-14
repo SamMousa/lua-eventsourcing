@@ -127,6 +127,9 @@ function EventSourcing.launchTest()
             local result, data = LibSerialize:Deserialize(
                 LibDeflate:DecompressDeflate(LibDeflate:DecodeForWoWAddonChannel(text)))
             if result then
+                if distribution == "WHISPER" then
+                    distribution = "GUILD"
+                end
                 callback(data, distribution, sender)
             else
                 print("Failed to deserialize data", data)
@@ -135,6 +138,14 @@ function EventSourcing.launchTest()
     end
 
     local function send(data, distribution, target, prio, callbackFn, callbackArg)
+        if distribution == "GUILD" then
+            distribution = "WHISPER"
+            if UnitName("player") == "Awesam" then
+                target = "Samdev"
+            else
+                target = "Awesam"
+            end
+        end
         local serialized = LibSerialize:Serialize(data)
 --        print("Sending")
 --        Util.DumpTable(data)
@@ -148,10 +159,6 @@ function EventSourcing.launchTest()
     if (#BigDataSet == 0) then
 --        createTestData(ledger)
     end
-
-
-
-
 
     ledger.registerMutator(TextMessageEntry.class(), function(entry)
         local _, _, _, _, _, name, _ = GetPlayerInfoByGUID(Util.getGuidFromInteger(entry:creator()))
