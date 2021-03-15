@@ -21,7 +21,9 @@ jobs:
           find: "{VERSION}"
           include: LuaDatabase.toc
           replace: "${{ env.RELEASE_VERSION }}"
-      - run: zip -r LibEventSourcing.zip . --exclude="*.git*"
+      - run: mkdir LibEventSourcing
+      - run: mv !(LibEventSourcing) LibEventSourcing
+      - run: zip -r LibEventSourcing.zip LibEventSourcing
       - name: Create GitHub release
         uses: Roang-zero1/github-create-release-action@master
         with:
