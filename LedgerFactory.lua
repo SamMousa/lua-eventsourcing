@@ -24,6 +24,9 @@ LedgerFactory.createLedger = function(table, send, registerReceiveHandler, autho
     stateManager:setBatchSize(50)
 
     return {
+        getSortedList = function()
+            return sortedList
+        end,
         getListSync = function()
             return listSync
         end,
