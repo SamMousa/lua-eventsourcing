@@ -21,7 +21,7 @@ jobs:
           find: "{VERSION}"
           include: LuaDatabase.toc
           replace: "${{ env.RELEASE_VERSION }}"
-      - run: zip -r LuaDatabase.zip . --exclude="*.git*
+      - run: zip -r LuaDatabase.zip . --exclude="*.git*"
       - name: Create GitHub release
         uses: Roang-zero1/github-create-release-action@master
         with:
