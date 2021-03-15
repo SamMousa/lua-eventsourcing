@@ -8,7 +8,6 @@ end
 local ListSync = LibStub("EventSourcing/ListSync")
 local LogEntry = LibStub("EventSourcing/LogEntry")
 local StateManager = LibStub("EventSourcing/StateManager")
-local TextMessageEntry = LibStub("EventSourcing/TextMessageEntry")
 
 
 
@@ -57,11 +56,6 @@ LedgerFactory.createLedger = function(table, send, registerReceiveHandler, autho
         end,
         disableSending = function()
             listSync:disableSending()
-        end,
-        sendMessage = function(message)
-            local entry = TextMessageEntry.create(message)
-            listSync:transmitViaGuild(entry)
-            return sortedList:uniqueInsert(entry)
         end
 
 

@@ -1,18 +1,7 @@
 -- Placeholders for WoW functions
 
-function GetTime()
-    return math.floor(os.clock() * 1000000)
-end
-
-local start
-
-function GetTimePreciseSec()
-    local currentTime = math.floor(os.clock() * 1000000)
-    if (start == nil) then
-        start = currentTime
-    end
-    return currentTime - start
-end
+GetTime = os.clock
+GetTimePreciseSec = os.clock
 
 strmatch = string.match
 
@@ -55,6 +44,30 @@ function UnitName()
     return "Bob"
 end
 
+function UnitGUID(target)
+    if target == "player" then
+        return "00000000-0000-BOB-0000-000000000"
+    else
+        error(string.format("Unknown target '%s'", target))
+    end
+
+end
+
+function GetPlayerInfoByGUID(guid)
+    if "00000000-0000-BOB-0000-0000000000" == guid then
+        return nil, nil, nil, nil, nil, "Bob", nil
+    else
+        error(string.format("Unknown GUID: %s", guid))
+    end
+end
 function UnitAffectingCombat(target)
     return false
 end
+
+function GetServerTime()
+    return os.time()
+end
+
+date = os.date
+
+WOW_STUB = true

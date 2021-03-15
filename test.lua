@@ -28,11 +28,11 @@ local state = {
 
 local Profile = {}
 function Profile:start(name)
-    Profile[name] =  GetTimePreciseSec()
+    Profile[name] =  GetTime()
 end
 
 function Profile:stop(name)
-    local elapsed =  GetTimePreciseSec() - Profile[name]
+    local elapsed =  GetTime() - Profile[name]
     print(string.format(name .. ": elapsed time: %.2f\n", elapsed))
 end
 

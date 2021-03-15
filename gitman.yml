@@ -1,38 +1,9 @@
 location: libs
 sources:
-  - repo: https://github.com/rossnichols/LibSerialize
-    name: LibSerialize
+  - repo: https://github.com/kaytotes/LibStub
+    name: LibStub
     rev: master
     type: git
-    sparse_paths:
-      -
-    link:
-    links:
-      -
-    scripts:
-      -
-  - repo: https://github.com/SafeteeWoW/LibDeflate
-    name: LibDeflate
-    rev: master
-    type: git
-    sparse_paths:
-      -
-    link:
-    links:
-      -
-    scripts:
-      -
-  - repo: https://github.com/ddumont/lib-st
-    name: LibScrollingTable
-    rev: master
-    type: git
-    sparse_paths:
-      -
-    link:
-    links:
-      -
-    scripts:
-      -
 sources_locked:
 
 default_group: ''

@@ -252,7 +252,7 @@ function Util.getIntegerGuid(target)
     return tonumber(string.sub(UnitGUID(target), -8), 16)
 end
 
-local GUIDPrefix = string.sub(UnitGUID("Player"), 1, -8)
+local GUIDPrefix = string.sub(UnitGUID("player"), 1, -8)
 function Util.getGuidFromInteger(int)
     return GUIDPrefix .. string.format("%08x", int)
 end

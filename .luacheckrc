@@ -2,8 +2,8 @@
 std = "lua51"
 max_line_length = false
 exclude_files = {
-	"**/Libs/**",
-	"**/libs/**"
+	"**/libs/**",
+	"**/test.lua"
 
 }
 ignore = {
@@ -19456,5 +19456,5 @@ globals = {
 	"ZOOM_OUT",
 	"ZOOM_OUT_BUTTON_TEXT",
 	"_RECORDING_WARNING_CORRUPTED",
-	"BigDataSet",
+	"WOW_STUB"
 }
