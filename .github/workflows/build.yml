@@ -21,7 +21,7 @@ jobs:
           find: "{VERSION}"
           include: LuaDatabase.toc
           replace: "${{ env.RELEASE_VERSION }}"
-      - run: zip -r LuaDatabase.zip . --exclude="*.git*"
+      - run: zip -r LibEventSourcing.zip . --exclude="*.git*"
       - name: Create GitHub release
         uses: Roang-zero1/github-create-release-action@master
         with:
@@ -29,8 +29,20 @@ jobs:
           #prerelease_regex: "^v0\\.[[:digit:]]+\\.[[:digit:]]+"
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-      - name: Upload artifact
+      - name: Upload artifact to github
         uses: fnkr/github-action-ghr@v1
         env:
-          GHR_PATH: LuaDatabase.zip
+          GHR_PATH: LibEventSourcing.zip
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      - name: Upload to curseforge
+        uses: itsmeow/curseforge-upload@master
+        with:
+          token: ${{ secrets.CURSEFORGE_TOKEN }}
+          project_id: 457141
+          game_endpoint: wow
+          file_path: LibEventSourcing.zip
+          changelog: See github for changes
+          display_name: LibEventSourcing
+          game_versions: 1-13-4
+          release_type: alpha
+          #relations:
