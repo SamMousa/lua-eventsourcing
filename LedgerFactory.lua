@@ -9,16 +9,50 @@ local ListSync = LibStub("EventSourcing/ListSync")
 local LogEntry = LibStub("EventSourcing/LogEntry")
 local StateManager = LibStub("EventSourcing/StateManager")
 
+--[[
+Params
+  table: table -- Reference to the data, should be a saved variable
+  send: function(tableData, distribution, target, progressCallback): void -- function the sync will use to send outgoing data
+  secureSend: function(tableData, distribution, target, progressCallback): void -- function the sync will use to send outgoing data over a secure channel
+  authorizationHandler: function(entry, sender): bool -- Authorization handler, called before sending outgoing entries and before
+  committing incoming entries
+
+  registerReceiveHandler: function(receiveCallback: function(message, distribution, sender)): void
 
 
-LedgerFactory.createLedger = function(table, send, registerReceiveHandler, authorizationHandler)
-    if type(table) ~= "table" then
-        error("Must pass a table to LedgerFactory")
+Notes
+  - Calling library must supply communication that takes care of serializing table typed data for sending across the network
+  -
+
+
+
+
+]]--
+local function assertType(arg, name, expectedType, optional)
+    if optional and arg == nil then
+        return
     end
+
+    if type(arg) ~=  expectedType then
+        error(string.format("Expected argument %s to be of type %s, got %s insead", name, expectedType, type(arg)))
+    end
+end
+local function assertFunction(arg, name, optional)
+    return assertType(arg, name, 'function', optional)
+end
+local function assertTable(arg, name, optional)
+    return assertType(arg, name, 'table', optional)
+end
+
+LedgerFactory.createLedger = function(table, send, registerReceiveHandler, authorizationHandler, secureSend)
+    assertTable(table, 'table')
+    assertFunction(send, 'send')
+    assertFunction(registerReceiveHandler, 'registerReceiveHandler')
+    assertFunction(secureSend, 'secureSend', true)
 
     local sortedList = LogEntry.sortedList(table)
     local stateManager = StateManager:new(sortedList)
-    local listSync = ListSync:new(stateManager, send, registerReceiveHandler, authorizationHandler)
+    local listSync = ListSync:new(stateManager, send, registerReceiveHandler, authorizationHandler, secureSend)
 
     stateManager:setUpdateInterval(500)
     stateManager:setBatchSize(50)
@@ -37,8 +71,10 @@ LedgerFactory.createLedger = function(table, send, registerReceiveHandler, autho
             stateManager:registerHandler(metatable, mutatorFunc)
         end,
         submitEntry = function(entry)
-            listSync:transmitViaGuild(entry)
-            return sortedList:uniqueInsert(entry)
+            if listSync:transmitViaGuild(entry) then
+                -- only commit locally if we are authorized to send
+                sortedList:uniqueInsert(entry)
+            end
         end,
         reset = function()
             stateManager:reset()

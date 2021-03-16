@@ -15,6 +15,69 @@ local RequestWeekMessage = LibStub("EventSourcing/Message/RequestWeek")
 local BulkDataMessage = LibStub("EventSourcing/Message/BulkData")
 local Message = LibStub("EventSourcing/Message")
 
+
+
+
+
+
+local function weekEntryIterator(listSync, week)
+    local sortedList = listSync._stateManager:getSortedList()
+
+    local position = sortedList:searchGreaterThanOrEqual({t = Util.WeekStart(week) })
+    local stateManager = listSync._stateManager
+    local entries = sortedList:entries()
+
+    return function()
+        -- luacheck: push ignore
+        while position ~= nil and position <= #entries do
+            -- luacheck: pop ignore
+            local entry = entries[position]
+            stateManager:castLogEntry(entry)
+            position = position + 1
+            if entry:weekNumber() == week then
+                return entry
+            else
+                return nil
+            end
+        end
+    end
+end
+
+--[[
+  Get the hash and number of events in a week.
+  Result is cached using the sortedList state.
+]]--
+local function weekHash(listSync, week)
+    local adler32 = Util.IntegerChecksumCoroutine()
+
+    local result, hash
+    local count = 0
+
+    local state = listSync._stateManager:getSortedList():state()
+    if (listSync._weekHashCache.state ~= state) then
+        listSync._weekHashCache = {
+            state = state,
+            entries = {}
+        }
+    end
+    if listSync._weekHashCache.entries[week] == nil then
+        for entry in weekEntryIterator(listSync, week) do
+            result, hash = coroutine.resume(adler32, LogEntry.time(entry))
+            if not result then
+                error(hash)
+            end
+            result, hash = coroutine.resume(adler32, LogEntry.creator(entry))
+            if not result then
+                error(hash)
+            end
+            count = count + 1
+
+        end
+        listSync._weekHashCache.entries[week] = {hash or 0, count }
+    end
+    return listSync._weekHashCache.entries[week][1], listSync._weekHashCache.entries[week][2]
+end
+
 local function advertiseWeekHashInhibitorSet(listSync, week)
     local messageType = AdvertiseHashMessage.type()
     local now = GetServerTime()
@@ -41,7 +104,7 @@ local function handleAdvertiseMessage(message, sender, distribution, stateManage
             listSync.advertisedWeeks[weekHashCount[1]] = nil
         end
 
-        local hash, count = listSync:weekHash(weekHashCount[1])
+        local hash, count = weekHash(listSync, weekHashCount[1])
         advertiseWeekHashInhibitorSet(listSync, weekHashCount[1])
         Util.DumpTable(weekHashCount)
         if  hash == weekHashCount[2] and count == weekHashCount[3] then
@@ -154,9 +217,21 @@ local function advertiseWeekHashInhibitorCheckOrSet(listSync, week)
     return false
 end
 
+--[[
+  Internally we use the secure channel for large messages to prevent DoS,
+  unsecure channel will only send small messages.
+]]--
+local function send(listSync, message, distribution, target)
+    listSync.send(message, distribution, target)
+end
 
+local function sendSecure(listSync, message, distribution, target)
+    listSync.sendSecure(message, distribution, target, function(_, sent, total)
+        print(string.format("Sending data %d out of %d", sent, total))
+    end)
+end
 
-function ListSync:new(stateManager, sendAddonMessage, registerReceiveHandler, authorizationHandler)
+function ListSync:new(stateManager, sendFunction, registerReceiveHandler, authorizationHandler, sendSecureFunction)
     if getmetatable(stateManager) ~= StateManager then
         error("stateManager must be an instance of StateManager")
     end
@@ -168,7 +243,8 @@ function ListSync:new(stateManager, sendAddonMessage, registerReceiveHandler, au
     self.__index = self
 
     o.advertiseTicker = nil
-    o.sendAddonMessage = sendAddonMessage
+    o.send = sendFunction
+    o.sendSecure = sendSecureFunction or sendFunction
     o.authorizationHandler = authorizationHandler
 
     o._stateManager = stateManager
@@ -211,36 +287,35 @@ end
 
 --[[
     Sends an entry out over the guild channel, if allowed
+    @return bool whether we were authorized to send the message
 ]]--
 function ListSync:transmitViaGuild(entry)
     if self.authorizationHandler(entry, UnitName("player")) then
         local message = BulkDataMessage.create()
         message:addEntry(self._stateManager:createListFromEntry(entry))
-        self:send(message, "GUILD")
+        send(self, message, "GUILD")
+        return true
     end
+    return false
 end
 
 
-function ListSync:send(message, distribution, target)
-    self.sendAddonMessage(message, distribution, target, "BULK", function(_, sent, total)
-        print(string.format("Sending data %d out of %d", sent, total))
-    end)
-end
+
 
 function ListSync:weekSyncViaWhisper(target, week)
-    local message = WeekDataMessage.create(week, self:weekHash(week))
-    for entry in self:weekEntryIterator(week) do
+    local message = WeekDataMessage.create(week, weekHash(self, week))
+    for entry in weekEntryIterator(self, week) do
         message:addEntry(self._stateManager:createListFromEntry(entry))
     end
-    self:send(message, "WHISPER", target)
+    send(self, message, "WHISPER", target)
 end
 
 function ListSync:weekSyncViaGuild(week)
-    local message = WeekDataMessage.create(week, self:weekHash(week))
-    for entry in self:weekEntryIterator(week) do
+    local message = WeekDataMessage.create(week, weekHash(self, week))
+    for entry in weekEntryIterator(self, week) do
         message:addEntry(self._stateManager:createListFromEntry(entry))
     end
-    self:send(message, "GUILD")
+    sendSecure(self, message, "GUILD")
 end
 
 function ListSync:fullSyncViaWhisper(target)
@@ -249,7 +324,7 @@ function ListSync:fullSyncViaWhisper(target)
         message:addEntry(self._stateManager:createListFromEntry(v))
     end
 
-    self:send(message, "WHISPER", target);
+    send(self, message, "WHISPER", target);
 end
 
 function ListSync:isSendingEnabled()
@@ -267,7 +342,7 @@ function ListSync:enableSending()
         local message = AdvertiseHashMessage.create()
         for i = 0, 3 do
             if (advertiseWeekHashInhibitorCheckOrSet(self, currentWeek - i)) then
-                local hash, count = self:weekHash(currentWeek - i)
+                local hash, count = weekHash(self, currentWeek - i)
                 message:addHash(currentWeek - i, hash, count)
                 self.advertisedWeeks[currentWeek - i] = now + 30
             end
@@ -285,62 +360,4 @@ function ListSync:disableSending()
         self.advertiseTicker:Cancel()
         self.advertiseTicker = nil
     end
-end
-
-function ListSync:weekEntryIterator(week)
-    local sortedList = self._stateManager:getSortedList()
-
-    local position = sortedList:searchGreaterThanOrEqual({t = Util.WeekStart(week) })
-    local stateManager = self._stateManager
-    local entries = sortedList:entries()
-
-    return function()
-        -- luacheck: push ignore
-        while position ~= nil and position <= #entries do
-            -- luacheck: pop ignore
-            local entry = entries[position]
-            stateManager:castLogEntry(entry)
-            position = position + 1
-            if entry:weekNumber() == week then
-                return entry
-            else
-                return nil
-            end
-        end
-    end
-end
-
---[[
-  Get the hash and number of events in a week.
-  Result is cached using the sortedList state.
-]]--
-function ListSync:weekHash(week)
-    local adler32 = Util.IntegerChecksumCoroutine()
-
-    local result, hash
-    local count = 0
-
-    local state = self._stateManager:getSortedList():state()
-    if (self._weekHashCache.state ~= state) then
-        self._weekHashCache = {
-            state = state,
-            entries = {}
-        }
-    end
-    if self._weekHashCache.entries[week] == nil then
-        for entry in self:weekEntryIterator(week) do
-            result, hash = coroutine.resume(adler32, LogEntry.time(entry))
-            if not result then
-                error(hash)
-            end
-            result, hash = coroutine.resume(adler32, LogEntry.creator(entry))
-            if not result then
-                error(hash)
-            end
-            count = count + 1
-
-        end
-        self._weekHashCache.entries[week] = {hash or 0, count }
-    end
-    return self._weekHashCache.entries[week][1], self._weekHashCache.entries[week][2]
 end
