@@ -348,7 +348,7 @@ function ListSync:enableSending()
             end
         end
         if (message:hashCount() > 0) then
-            self:send(message, "GUILD")
+            send(self, message, "GUILD")
         else
             print("Skipping due to inhibition")
         end
