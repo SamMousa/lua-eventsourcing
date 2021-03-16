@@ -106,7 +106,6 @@ local function handleAdvertiseMessage(message, sender, distribution, stateManage
 
         local hash, count = weekHash(listSync, weekHashCount[1])
         advertiseWeekHashInhibitorSet(listSync, weekHashCount[1])
-        Util.DumpTable(weekHashCount)
         if  hash == weekHashCount[2] and count == weekHashCount[3] then
             print(string.format("Received week %s hash from %s, we are in sync", weekHashCount[1], sender))
         elseif requestWeekInhibitorCheck(listSync, weekHashCount[1]) then
