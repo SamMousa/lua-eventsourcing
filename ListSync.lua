@@ -129,11 +129,6 @@ local function handleMessage(self, message, distribution, sender)
         return
     end
 
-    if sender == self.playerName then
-        print("Ignoring message from self")
-        return
-    end
-
     -- We use pairs() because we don't care about order.
     -- This allows us to insert handlers with a key (and to easily remove them later)
     for _, handler in pairs(self.messageHandlers[message.type] or {}) do
