@@ -13,7 +13,7 @@ local StateManager = LibStub("EventSourcing/StateManager")
 Params
   table: table -- Reference to the data, should be a saved variable
   send: function(tableData, distribution, target, progressCallback): void -- function the sync will use to send outgoing data
-  secureSend: function(tableData, distribution, target, progressCallback): void -- function the sync will use to send outgoing data over a secure channel
+  sendLargeMessage: function(tableData, distribution, target, progressCallback): void -- function the sync will use to send large messages
   authorizationHandler: function(entry, sender): bool -- Authorization handler, called before sending outgoing entries and before
   committing incoming entries
 
@@ -44,7 +44,7 @@ local function assertTable(arg, name, optional)
     return assertType(arg, name, 'table', optional)
 end
 
-LedgerFactory.createLedger = function(table, send, registerReceiveHandler, authorizationHandler, secureSend)
+LedgerFactory.createLedger = function(table, send, registerReceiveHandler, authorizationHandler, sendLargeMessage)
     assertTable(table, 'table')
     assertFunction(send, 'send')
     assertFunction(registerReceiveHandler, 'registerReceiveHandler')
@@ -52,7 +52,7 @@ LedgerFactory.createLedger = function(table, send, registerReceiveHandler, autho
 
     local sortedList = LogEntry.sortedList(table)
     local stateManager = StateManager:new(sortedList)
-    local listSync = ListSync:new(stateManager, send, registerReceiveHandler, authorizationHandler, secureSend)
+    local listSync = ListSync:new(stateManager, send, registerReceiveHandler, authorizationHandler, sendLargeMessage)
 
     stateManager:setUpdateInterval(500)
     stateManager:setBatchSize(50)
