@@ -111,7 +111,7 @@ local function handleAdvertiseMessage(message, sender, distribution, stateManage
         elseif requestWeekInhibitorCheck(listSync, weekHashCount[1]) then
             print(string.format("Requesting data for week %s", weekHashCount[1]))
             requestWeekInhibitorSet(listSync, weekHashCount[1])
-            listSync:send(RequestWeekMessage.create(weekHashCount[1]), "GUILD")
+            send(listSync, RequestWeekMessage.create(weekHashCount[1]), "GUILD")
         end
     end
 end
