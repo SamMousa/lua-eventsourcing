@@ -175,7 +175,7 @@ function StateManager:setUpdateInterval(interval)
         if (UnitAffectingCombat("player")) then
             return
         end
-l
+
         local success, message = pcall(self.updateState, self)
         if (not success) then
             error(message)
