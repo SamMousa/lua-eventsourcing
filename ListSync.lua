@@ -19,6 +19,14 @@ local Message = LibStub("EventSourcing/Message")
 
 
 
+--[[
+  Internally we use the secure channel for large messages to prevent DoS,
+  unsecure channel will only send small messages.
+]]--
+local function send(listSync, message, distribution, target)
+    listSync.send(message, distribution, target)
+end
+
 
 local function weekEntryIterator(listSync, week)
     local sortedList = listSync._stateManager:getSortedList()
@@ -209,14 +217,6 @@ local function advertiseWeekHashInhibitorCheckOrSet(listSync, week)
         return true
     end
     return false
-end
-
---[[
-  Internally we use the secure channel for large messages to prevent DoS,
-  unsecure channel will only send small messages.
-]]--
-local function send(listSync, message, distribution, target)
-    listSync.send(message, distribution, target)
 end
 
 local function sendSecure(listSync, message, distribution, target)
