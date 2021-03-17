@@ -327,6 +327,9 @@ end
 
 function ListSync:enableSending()
     -- Start advertisements of our latest hashes.
+    if self.advertiseTicker ~= nil then
+        return
+    end
     self.advertiseTicker = C_Timer.NewTicker(10, function()
 
         -- Get week hash for the last 4 weeks.
