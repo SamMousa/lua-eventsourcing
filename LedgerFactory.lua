@@ -49,7 +49,7 @@ LedgerFactory.createLedger = function(table, send, registerReceiveHandler, autho
     assertTable(table, 'table')
     assertFunction(send, 'send')
     assertFunction(registerReceiveHandler, 'registerReceiveHandler')
-    assertFunction(secureSend, 'secureSend', true)
+    assertFunction(sendLargeMessage, 'sendLargeMessage', true)
 
     local sortedList = LogEntry.sortedList(table)
     local stateManager = StateManager:new(sortedList)
