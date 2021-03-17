@@ -192,6 +192,10 @@ end
 
 
 local function handleMessage(self, message, distribution, sender)
+    if sender == self.playerName then
+        return
+    end
+
     if not Message.cast(message) then
         print(string.format("Ignoring invalid message from %s", sender))
         return
