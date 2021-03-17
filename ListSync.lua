@@ -70,13 +70,11 @@ local function weekHash(listSync, week)
     end
     if listSync._weekHashCache.entries[week] == nil then
         for entry in weekEntryIterator(listSync, week) do
-            result, hash = coroutine.resume(adler32, LogEntry.time(entry))
-            if not result then
-                error(hash)
-            end
-            result, hash = coroutine.resume(adler32, LogEntry.creator(entry))
-            if not result then
-                error(hash)
+            for _, v in ipairs(LogEntry.numbersForHash(entry)) do
+                result, hash = coroutine.resume(adler32, v)
+                if not result then
+                    error(hash)
+                end
             end
             count = count + 1
 

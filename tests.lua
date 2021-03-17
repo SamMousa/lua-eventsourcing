@@ -19,25 +19,6 @@ end
 local PlayerAmountEntry = LibStub("EventSourcing/PlayerAmountEntry")
 local StartEntry = LibStub("EventSourcing/StartEntry")
 
-local function assertTrue(param, message)
-    if param ~= true then
-        error("Assertion failed: " .. message)
-    else
-        print("Assertion ok")
-    end
-end
-local function assertSame(expected, value)
-    if expected ~= value then
-        error("Failed assert that expected " .. expected .. " matches " .. value)
-    else
-        print("Assertion OK")
-    end
-end
-local function assertError(cb)
-    if pcall(cb) then
-        error("Assert failed: Expected error")
-    end
-end
 
 
 local subject
@@ -51,6 +32,11 @@ assertError(function()
 end)
 
 
+--[[ BEGIN TESTS ]]--
+
 subject = StartEntry.create(1234)
 assertSame(subject:creator(), 1234)
+
+
+local sortedList = LogEntry.sortedList
 assertTrue(true)
