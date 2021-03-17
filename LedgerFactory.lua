@@ -44,7 +44,8 @@ local function assertTable(arg, name, optional)
     return assertType(arg, name, 'table', optional)
 end
 
-LedgerFactory.createLedger = function(table, send, registerReceiveHandler, authorizationHandler, sendLargeMessage)
+LedgerFactory.createLedger = function(table, send, registerReceiveHandler, authorizationHandler, sendLargeMessage,
+    updateInterval, batchSize)
     assertTable(table, 'table')
     assertFunction(send, 'send')
     assertFunction(registerReceiveHandler, 'registerReceiveHandler')
@@ -54,8 +55,8 @@ LedgerFactory.createLedger = function(table, send, registerReceiveHandler, autho
     local stateManager = StateManager:new(sortedList)
     local listSync = ListSync:new(stateManager, send, registerReceiveHandler, authorizationHandler, sendLargeMessage)
 
-    stateManager:setUpdateInterval(500)
-    stateManager:setBatchSize(50)
+    stateManager:setUpdateInterval(updateInterval or 500)
+    stateManager:setBatchSize(batchSize or 50)
 
     return {
         getSortedList = function()
