@@ -1,16 +1,18 @@
-require "../wow"
-require "../libs/LibStub/LibStub"
-require "../Util"
-require "../SortedList"
-require "../LogEntry"
-require "../source/Message"
-require "../source/AdvertiseHashMessage"
-require "../source/RequestWeekMessage"
-require "../source/BulkDataMessage"
-require "../source/WeekDataMessage"
-require "../StateManager"
-require "../ListSync"
-require "../LedgerFactory"
+print("Starting bootstrap")
+
+require "tests/_wowstubs"
+require "libs/LibStub/LibStub"
+require "source/Util"
+require "source/SortedList"
+require "source/LogEntry"
+require "source/Message"
+require "source/AdvertiseHashMessage"
+require "source/RequestWeekMessage"
+require "source/BulkDataMessage"
+require "source/WeekDataMessage"
+require "source/StateManager"
+require "source/ListSync"
+require "source/LedgerFactory"
 math.randomseed(os.time())
 
 local assertionStatistics = {
