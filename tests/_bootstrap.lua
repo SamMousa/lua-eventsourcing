@@ -49,9 +49,17 @@ local Util = LibStub("EventSourcing/Util")
 local ts = Util.time()
 Util.time = function() return ts  end
 
-function printResults()
+function printResultsAndExit()
     Util.DumpTable(assertionStatistics)
+    if (assertionStatistics['failed'] > 0) then
+        os.exit(1)
+    else
+        os.exit(0)
+    end
 end
 
+function beginTests()
+    print(string.format("Starting tests in file %s", arg[0]))
+end
 
 print("Finished bootstrap")

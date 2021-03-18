@@ -46,7 +46,7 @@ end
 
 function UnitGUID(target)
     if target == "player" then
-        return "00000000-0000-BOB-0000-000000000"
+        return "00000000-0000-BOB-0000-0ABCDABCD"
     else
         error(string.format("Unknown target '%s'", target))
     end

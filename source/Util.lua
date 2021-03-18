@@ -253,16 +253,17 @@ function Util.random(length, alternativeCharset)
 end
 
 function Util.getIntegerGuid(target)
-    return Util.getIntegerGuid(UnitGUID(target))
+    return Util.getIntegerFromGuid(UnitGUID(target))
 end
 
 function Util.getIntegerFromGuid(guid)
     return tonumber(string.sub(guid, -8), 16)
 end
 
-local GUIDPrefix = string.sub(UnitGUID("player"), 1, -8)
+local GUIDPrefix = string.sub(UnitGUID("player"), 1, -9)
+
 function Util.getGuidFromInteger(int)
-    return GUIDPrefix .. string.format("%08x", int)
+    return GUIDPrefix .. string.format("%08X", int)
 end
 
 function Util.guid()
