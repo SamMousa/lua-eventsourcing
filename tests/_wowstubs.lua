@@ -64,10 +64,6 @@ function UnitAffectingCombat(target)
     return false
 end
 
-function GetServerTime()
-    return os.time()
-end
-
 date = os.date
 
 WOW_STUB = true
