@@ -19,16 +19,19 @@ local EVENT = {
 }
 
 local function hydrateEntryFromList(entry, data)
-    for i, key in ipairs(entry:fields()) do
+    local version = data.v or 1
+    for i, key in ipairs(entry:fields(version)) do
         entry[key] = data[i]
     end
 end
 
-local function entryToList(entry)
+local function entryToList(entry, version)
     local result = {}
-    for _, key in ipairs(entry:fields()) do
+    version = version or 1
+    for _, key in ipairs(entry:fields(version)) do
         table.insert(result, entry[key])
     end
+    result.v = version
     return result
 end
 
