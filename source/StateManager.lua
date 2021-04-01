@@ -137,6 +137,19 @@ function StateManager:recalculateState()
     end
 end
 
+-- Applies all pending entries
+function StateManager:catchup()
+    self:commitUncommittedEntries()
+    local entries = self.list:entries()
+
+    for i = self.lastAppliedIndex + 1, #entries do
+        local entry = entries[i]
+        self.handlers[entry:class()](entry)
+        self.lastAppliedIndex = i
+    end
+    self.errorCount = 0
+end
+
 function StateManager:setBatchSize(size)
     if type(size) ~= 'number' then
         error("Batch size must be a number")
@@ -148,6 +161,12 @@ function StateManager:getBatchSize()
     return self.batchSize
 end
 
+function StateManager:commitUncommittedEntries()
+    for _, v in ipairs(self.uncommittedEntries) do
+        self.list:uniqueInsert(v)
+    end
+    self.uncommittedEntries = {}
+end
 --[[
   Higher means less noticeable lag
   @param float the interval in milliseconds to use for updating state
@@ -165,11 +184,7 @@ function StateManager:setUpdateInterval(interval)
         self.measuredInterval = t - self.lastTick
         self.lastTick = t
 
-        -- Commit uncommittedEntries to the list
-        for _, v in ipairs(self.uncommittedEntries) do
-            self.list:uniqueInsert(v)
-        end
-        self.uncommittedEntries = {}
+        self:commitUncommittedEntries()
 
         -- Skip state updates if we are in combat
         if (UnitAffectingCombat("player")) then
@@ -196,6 +211,7 @@ end
 function StateManager:getUpdateInterval()
     return math.floor(self.measuredInterval * 1000)
 end
+
 
 --[[
   This function plays new entries, it is called repeatedly on a timer.

@@ -77,6 +77,9 @@ LedgerFactory.createLedger = function(table, send, registerReceiveHandler, autho
                 sortedList:uniqueInsert(entry)
             end
         end,
+        catchup = function(entry)
+            stateManager:catchup()
+        end,
         reset = function()
             stateManager:reset()
         end,
