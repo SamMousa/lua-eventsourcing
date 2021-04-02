@@ -91,7 +91,7 @@ LedgerFactory.createLedger = function(table, send, registerReceiveHandler, autho
             --
             stateManager:addStateChangedListener(function(_)
                 local lag, uncommitted = stateManager:lag()
-                return callback(lag, uncommitted)
+                return callback(lag, uncommitted, stateManager:stateHash())
             end)
         end,
         enableSending = function ()
