@@ -201,17 +201,12 @@ local function advertiseWeekHashInhibitorCheckOrSet(listSync, week)
     return false
 end
 
-local function sendSecure(listSync, message, distribution, target)
-    listSync.sendSecure(message, distribution, target)
-end
-
-function ListSync:new(stateManager, sendFunction, registerReceiveHandler, authorizationHandler, sendSecureFunction,
-                      logger)
+function ListSync:new(stateManager, sendMessage, registerReceiveHandler, authorizationHandler, sendLargeMessage, logger)
     Util.assertInstanceOf(stateManager, StateManager)
-    Util.assertFunction(sendFunction, "sendFunction")
+    Util.assertFunction(sendMessage, "send")
     Util.assertFunction(registerReceiveHandler, "registerReceiveHandler")
     Util.assertFunction(authorizationHandler, "authorizationHandler")
-    Util.assertFunction(sendSecureFunction, "sendSecureFunction", true)
+    Util.assertFunction(sendLargeMessage, "sendLargeMessage", true)
     Util.assertLogger(logger)
 
 
@@ -222,8 +217,8 @@ function ListSync:new(stateManager, sendFunction, registerReceiveHandler, author
 
     o.advertiseTicker = nil
     o.defaultAdvertiseCount = 4
-    o.send = sendFunction
-    o.sendSecure = sendSecureFunction or sendFunction
+    o.send = sendMessage
+    o.sendLargeMessage = sendLargeMessage or sendMessage
     o.authorizationHandler = authorizationHandler
     o.logger = logger
 
@@ -295,7 +290,7 @@ function ListSync:weekSyncViaGuild(week)
     for entry in weekEntryIterator(self, week) do
         message:addEntry(self._stateManager:createListFromEntry(entry))
     end
-    sendSecure(self, message, "GUILD")
+    self.sendLargeMessage(message, "GUILD")
 end
 
 function ListSync:fullSyncViaWhisper(target)
