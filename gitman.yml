@@ -8,7 +8,7 @@ sources:
       - "LibStub.lua"
   - repo: https://github.com/lantisnt/LibLogger
     name: LibLogger
-    rev: master
+    rev: v1.1.1
     type: git
 sources_locked:
 
