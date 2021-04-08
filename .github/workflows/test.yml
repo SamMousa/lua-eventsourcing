@@ -1,8 +1,17 @@
-name: Run test suite
+name: Continuous integration
 on:
   push:
 jobs:
   lint:
+    name: Run luacheck
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v2
+      - name: luacheck
+        uses: nebularg/actions-luacheck@v1.1.0
+        with:
+          files: source
+  test:
     name: Run luacheck
     runs-on: ubuntu-latest
     steps:
@@ -15,8 +24,18 @@ jobs:
         with:
           luaVersion: "5.1.5"
       - name: Run tests
-        run: ls tests/ | grep -v '_' | xargs -I {} lua -l tests/_bootstrap tests/{}
-      - name: luacheck
-        uses: nebularg/actions-luacheck@v1.1.0
+        run: ./runtests.sh
+  release:
+    name: Automated release
+    needs: [test, cs]
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v2
+      - uses: actions/setup-node@v1
         with:
-          files: source
+          node-version: '14.x'
+      - name: install dependencies for semantic-release
+        run: npm ci
+      - run: $(npm bin)/semantic-release
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

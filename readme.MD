@@ -60,3 +60,13 @@ Denial of service
 The consuming addon is responsible for providing secure communication channels.
 Specifically if we can only authorize entries but not sync messages someone can
 block sync by rebroadcasting every advertisement with a lower timestamp and then never sending actual data.
+
+
+# Contributions
+
+As much as possible is automated when it comes to chores in this library.
+
+- Run `npm install`, this will set up the commit linter as well as git hooks
+- We use conventional commits (https://www.conventionalcommits.org/en/v1.0.0/) for standardizing commit messages
+- We use semantic-release (https://semantic-release.gitbook.io/semantic-release/) for automated releases
+- We use gitman (https://gitman.readthedocs.io/en/latest/) for dependency management
