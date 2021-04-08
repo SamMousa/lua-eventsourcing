@@ -42,7 +42,10 @@ jobs:
       - name: install dependencies
         run: gitman install
       - run: mkdir LibEventSourcing
-      - run: mv `ls | grep -v '^LibEventSourcing$'` LibEventSourcing
+      - run: mv LibEventSourcing.* LibEventSourcing/
+      - run: mv readme.MD LibEventSourcing/
+      - run: mv source LibEventSourcing/
+      - run: mv libs LibEventSourcing/
       - run: zip -r LibEventSourcing.zip LibEventSourcing -x '*.git*'
       - run: $(npm bin)/semantic-release
         env:
