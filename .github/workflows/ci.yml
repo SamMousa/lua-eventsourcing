@@ -31,11 +31,6 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v2
-      - uses: actions/setup-node@v1
-        with:
-          node-version: '14.x'
-      - name: install dependencies for semantic-release
-        run: npm ci
       - uses: actions/checkout@v2
       - name: install gitman
         run: pipx install gitman
@@ -46,7 +41,14 @@ jobs:
       - run: mv readme.MD LibEventSourcing/
       - run: mv source LibEventSourcing/
       - run: mv libs LibEventSourcing/
-      - run: zip -r LibEventSourcing.zip LibEventSourcing -x '*.git*'
+      - run: ls -lahr LibEventSourcing
+      - run: zip -r LibEventSourcing.zip LibEventSourcing
+
+      - uses: actions/setup-node@v1
+        with:
+          node-version: '14.x'
+      - name: install dependencies for semantic-release
+        run: npm ci
       - run: $(npm bin)/semantic-release
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
