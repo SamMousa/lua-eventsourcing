@@ -27,7 +27,7 @@ jobs:
         run: ./runtests.sh
   release:
     name: Automated release
-    needs: [test, cs]
+    needs: [test, lint]
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v2
