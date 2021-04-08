@@ -36,6 +36,14 @@ jobs:
           node-version: '14.x'
       - name: install dependencies for semantic-release
         run: npm ci
+      - uses: actions/checkout@v2
+      - name: install gitman
+        run: pipx install gitman
+      - name: install dependencies
+        run: gitman install
+      - run: mkdir LibEventSourcing
+      - run: mv `ls | grep -v '^LibEventSourcing$'` LibEventSourcing
+      - run: zip -r LibEventSourcing.zip LibEventSourcing -x '*.git*'
       - run: $(npm bin)/semantic-release
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

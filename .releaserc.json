@@ -4,5 +4,11 @@
     ["@semantic-release/commit-analyzer", {
       "preset": "conventionalcommits"
     }],
-    "@semantic-release/release-notes-generator", "@semantic-release/github"]
+    "@semantic-release/release-notes-generator",
+    ["@semantic-release/github", {
+      "assets": [
+        {"path": "LibEventSourcing.zip", "label": "Addon package"}
+      ]
+    }]
+  ]
 }
