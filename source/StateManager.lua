@@ -38,7 +38,21 @@ local function applyEntry(stateManager, entry, index)
     end
     local result, hash
 
-    stateManager.handlers[entry:class()](entry)
+    --[[ Check ignored entries ]]--
+    local uuid = entry:uuid();
+    if (stateManager.ignoredEntries[uuid] ~= nil) then
+        stateManager.ignoredEntries[uuid] = nil
+    else
+        stateManager.handlers[entry:class()](entry)
+    end
+
+    --[[
+    Ignored entries don't have their handlers called, everything else stays the same.
+    They still are applied and have an effect on the state hash
+
+    ]]--
+
+
     stateManager.lastAppliedIndex = index
     stateManager.lastAppliedEntry = entry
 
@@ -95,6 +109,7 @@ function StateManager:new(list, logger)
     o.handlers = {}
     o.batchSize = 1
     o.metatables = {}
+    o.ignoredEntries = {}
     o.listeners = {}
     o.lastTick = 0
     o.measuredInterval = 0

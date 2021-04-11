@@ -107,11 +107,15 @@ end
 function LogEntry.sortedList(data)
     local r = SortedList:new(data or {}, Util.CreateMultiFieldSorter('t', 'cr', 'co'), true)
     if type(r.uniqueInsert) ~= 'function' then
-        error("Error creating sorted list but doesn't have function")
+        error("Error creating sorted list but doesn't have unique insert function")
     end
     return r
 end
 
 function LogEntry:fields()
     return { "t", "cr", "co"}
+end
+
+function LogEntry:uuid()
+    return table.concat(self:numbersForHash(), '-')
 end
