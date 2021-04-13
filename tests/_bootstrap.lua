@@ -1,19 +1,10 @@
-
 require "tests/_wowstubs"
-require "libs/LibStub/LibStub"
-require "libs/LibLogger/LibLogger"
-require "source/Util"
-require "source/SortedList"
-require "source/LogEntry"
-require "source/IgnoreEntry"
-require "source/Message"
-require "source/AdvertiseHashMessage"
-require "source/RequestWeekMessage"
-require "source/BulkDataMessage"
-require "source/WeekDataMessage"
-require "source/StateManager"
-require "source/ListSync"
-require "source/LedgerFactory"
+
+for line in io.lines('LibEventSourcing.xml') do
+    for file in string.gmatch(line, 'Script file="(.+)\.lua"') do
+        require(file:gsub('\\', '/'))
+    end
+end
 math.randomseed(os.time())
 
 local assertionStatistics = {
