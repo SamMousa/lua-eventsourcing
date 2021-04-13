@@ -311,7 +311,7 @@ function StateManager:getSortedList()
     return self.list
 end
 
-function StateManager:ignoreEntry(entry, creator)
+function StateManager:createIgnoreEntry(entry, creator)
     local counter
     local index = self.list:searchGreaterThanOrEqual(entry)
     local entries = self.list:entries()
@@ -326,9 +326,6 @@ function StateManager:ignoreEntry(entry, creator)
         counter = entries[index].co
         index = index - 1
     end
-    local ignoreEntry = IgnoreEntry.create(entry, creator, counter - 1)
 
-    if not self.list:uniqueInsert(ignoreEntry) then
-        error("Failed to insert ignore entry")
-    end
+    return IgnoreEntry.create(entry, creator, counter - 1)
 end

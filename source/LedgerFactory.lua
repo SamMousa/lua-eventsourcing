@@ -76,8 +76,17 @@ LedgerFactory.createLedger = function(table, send, registerReceiveHandler, autho
                 error("Attempted to submit entries for which you are not authorized")
             end
         end,
-        catchup = function(entry)
-            stateManager:catchup()
+        ignoreEntry = function(entry)
+            local ignoreEntry = stateManager:createIgnoreEntry(entry)
+            if listSync:transmitViaGuild(ignoreEntry) then
+                -- only commit locally if we are authorized to send
+                sortedList:uniqueInsert(ignoreEntry)
+            else
+                error("Attempted to submit entries for which you are not authorized")
+            end
+        end,
+        catchup = function(limit)
+            stateManager:catchup(limit)
         end,
         reset = function()
             stateManager:reset()

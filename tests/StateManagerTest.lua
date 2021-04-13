@@ -67,7 +67,7 @@ sortedList._entries = {}
 -- test ignoring entries
 local entryToIgnore = TestEntry:new('ignore this one')
 assertError(function()
-    stateManager:ignoreEntry(entryToIgnore, "bob")
+    stateManager:createIgnoreEntry(entryToIgnore, "bob")
 end)
 
 stateManager:catchup()
@@ -76,7 +76,8 @@ sortedList:uniqueInsert(entryToIgnore)
 stateManager:catchup()
 assertSame(0, stateManager:lag())
 assertSame('ignore this one', messages[#messages])
-stateManager:ignoreEntry(entryToIgnore, "Bob")
+local ignoreEntry = stateManager:createIgnoreEntry(entryToIgnore, "Bob")
+sortedList:uniqueInsert(ignoreEntry)
 assertCount(2, sortedList:entries())
 assertSame(2, stateManager:lag())
 stateManager:catchup()
