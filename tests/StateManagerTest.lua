@@ -3,7 +3,7 @@ beginTests()
 local Logger = LibStub("LibLogger")
 local StateManager = LibStub("EventSourcing/StateManager")
 local LogEntry = LibStub("EventSourcing/LogEntry")
-
+local Util = LibStub("EventSourcing/Util")
 local testData = {}
 local sortedList = LogEntry.sortedList(testData)
 local stateManager = StateManager:new(sortedList, Logger:New())
@@ -24,6 +24,9 @@ stateManager:registerHandler(TestEntry, function(entry)
     table.insert(messages, entry.m)
 end)
 
+stateManager:addStateRestartListener(function()
+    messages = {}
+end)
 
 stateManager:lag();
 
@@ -60,5 +63,24 @@ assertSame(101, stateManager:lag())
 C_Timer.Tick()
 assertSame(101 - stateManager:getBatchSize(), stateManager:lag())
 
+sortedList._entries = {}
+-- test ignoring entries
+local entryToIgnore = TestEntry:new('ignore this one')
+assertError(function()
+    stateManager:ignoreEntry(entryToIgnore, "bob")
+end)
 
+stateManager:catchup()
+assertEmpty(messages)
+sortedList:uniqueInsert(entryToIgnore)
+stateManager:catchup()
+assertSame(0, stateManager:lag())
+assertSame('ignore this one', messages[#messages])
+stateManager:ignoreEntry(entryToIgnore, "Bob")
+assertCount(2, sortedList:entries())
+assertSame(2, stateManager:lag())
+stateManager:catchup()
+assertSame(0, stateManager:lag())
+assertEmpty(messages)
+assertNotSame('ignore this one', messages[#messages])
 printResultsAndExit()

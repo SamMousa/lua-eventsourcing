@@ -26,7 +26,7 @@ local function constructor(self)
     return o
 end
 
-function LogEntry:extend(identifier, snapshot)
+function LogEntry:extend(identifier)
     local o = constructor(self)
 
     if (identifier == nil or type(identifier) ~= "string" or string.len(identifier) == 0) then
@@ -36,7 +36,6 @@ function LogEntry:extend(identifier, snapshot)
 
     -- static properties (won't appear on instances)
     o._cls = identifier
-    o._snapshot = snapshot or false
     return o
 end
 
@@ -75,13 +74,6 @@ function LogEntry:class()
     return self.cls
 end
 
--- return bool whether this is a snapshot entry
-function LogEntry:snapshot()
-    -- this is a property of the class, not of the instance
-    -- this therefore is not serialized to saved variables
-    return self._snapshot
-end
-
 function LogEntry:time()
     return self.t
 end
@@ -105,7 +97,7 @@ end
 
 -- Return a sorted list set up for log entries
 function LogEntry.sortedList(data)
-    local r = SortedList:new(data or {}, Util.CreateMultiFieldSorter('t', 'cr', 'co'), true)
+    local r = SortedList:new(data or {}, Util.CreateMultiFieldSorter('t', 'co', 'cr'), true)
     if type(r.uniqueInsert) ~= 'function' then
         error("Error creating sorted list but doesn't have unique insert function")
     end
@@ -113,7 +105,7 @@ function LogEntry.sortedList(data)
 end
 
 function LogEntry:fields()
-    return { "t", "cr", "co"}
+    return { "t", "co", "cr"}
 end
 
 function LogEntry:uuid()

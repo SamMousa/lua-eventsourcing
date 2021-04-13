@@ -4,14 +4,13 @@ if not Factory then
     return
 end
 
-
 local LogEntry = LibStub("EventSourcing/LogEntry")
 local IgnoreEntry = LogEntry:extend('IGN')
 
-function IgnoreEntry:new(entry, timestamp, counter, creator)
+function IgnoreEntry:new(entry, creator, counter)
     local o = LogEntry.new(self, creator)
-    o.ref = entry:numbersForHash()
-    o.t = timestamp
+    o.ref = entry:uuid()
+    o.t = entry:time()
     o.co = counter
     return o
 end
@@ -20,4 +19,12 @@ function IgnoreEntry:fields()
     local result = LogEntry:fields()
     table.insert(result, 'ref')
     return result
+end
+
+function Factory.create(entry, creator, counter)
+    return IgnoreEntry:new(entry, creator, counter)
+end
+
+function Factory.class()
+    return IgnoreEntry
 end

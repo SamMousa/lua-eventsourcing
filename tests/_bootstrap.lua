@@ -1,4 +1,3 @@
-print("Starting bootstrap")
 
 require "tests/_wowstubs"
 require "libs/LibStub/LibStub"
@@ -6,6 +5,7 @@ require "libs/LibLogger/LibLogger"
 require "source/Util"
 require "source/SortedList"
 require "source/LogEntry"
+require "source/IgnoreEntry"
 require "source/Message"
 require "source/AdvertiseHashMessage"
 require "source/RequestWeekMessage"
@@ -56,7 +56,7 @@ function assertCount(expected, table)
 end
 function assertError(cb)
     assertionStatistics["total"] = assertionStatistics["total"] + 1
-    assert(pcall(cb), "Assert failed: Expected error")
+    assert(pcall(cb) == false, "Assert failed: Expected error")
     assertionStatistics["passed"] = assertionStatistics["passed"] + 1
 end
 
@@ -77,5 +77,3 @@ end
 function beginTests()
     print(string.format("Starting tests in file %s", arg[0]))
 end
-
-print("Finished bootstrap")

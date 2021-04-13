@@ -12,6 +12,7 @@ end
 
 local Util = LibStub("EventSourcing/Util")
 local LogEntry = LibStub("EventSourcing/LogEntry")
+local IgnoreEntry = LibStub("EventSourcing/IgnoreEntry")
 -- PRIVATE FUNCTIONS
 local EVENT = {
     STATE_CHANGED = 'state',
@@ -67,7 +68,15 @@ local function applyEntry(stateManager, entry, index)
     stateManager.stateCheckSum = hash
 end
 
-
+local function restartIfRequired(stateManager)
+    local entries = stateManager.list:entries()
+    if stateManager.lastAppliedIndex > #entries
+            or (stateManager.lastAppliedEntry ~= nil and entries[stateManager.lastAppliedIndex] ~= stateManager.lastAppliedEntry)
+    then
+        stateManager.logger:Info("Detected non-chronological list change")
+        stateManager:restart()
+    end
+end
 --[[
   This function plays new entries, it is called repeatedly on a timer.
   The goal of each call is to remain under the frame render time
@@ -76,12 +85,7 @@ end
 local function updateState(stateManager)
     local entries = stateManager.list:entries()
     local applied = 0
-    if stateManager.lastAppliedIndex > #entries
-            or (stateManager.lastAppliedEntry ~= nil and entries[stateManager.lastAppliedIndex] ~= stateManager.lastAppliedEntry)
-    then
-        stateManager.logger:Info("Detected non-chronological list change")
-        stateManager:restart()
-    end
+    restartIfRequired(stateManager)
     while applied < stateManager.batchSize and stateManager.lastAppliedIndex < #entries do
         local entry = entries[stateManager.lastAppliedIndex + 1]
         stateManager:castLogEntry(entry)
@@ -114,9 +118,14 @@ function StateManager:new(list, logger)
     o.lastTick = 0
     o.measuredInterval = 0
 
+    o.handleIgnoreEntry = function(entry)
+        o.ignoredEntries[entry.ref] = true;
+    end
+    o:registerHandler(IgnoreEntry.class(), o.handleIgnoreEntry)
     o:restart()
     return o
 end
+
 
 function StateManager:castLogEntry(table)
     if type(table) ~= 'table' then
@@ -172,17 +181,23 @@ function StateManager:registerHandler(eventType, handler)
 end
 
 -- Applies all pending entries
-function StateManager:catchup()
+function StateManager:catchup(limit)
     self:commitUncommittedEntries()
-    local entries = self.list:entries()
-    if self.lastAppliedIndex == #entries then
+    if self:lag() == 0 then
         return
     end
+    local entries = self.list:entries()
 
     for i = self.lastAppliedIndex + 1, #entries do
         local entry = entries[i]
         self:castLogEntry(entry)
         applyEntry(self, entry, self.lastAppliedIndex + 1)
+        if limit ~= nil then
+            limit = limit - 1
+            if limit == 0 then
+                break
+            end
+        end
     end
     self:trigger(EVENT.STATE_CHANGED)
 end
@@ -256,6 +271,7 @@ end
   @return int the number of entries that have not been committed to the log
 ]]--
 function StateManager:lag()
+    restartIfRequired(self)
     return #self.list:entries() - self.lastAppliedIndex, #self.uncommittedEntries
 end
 
@@ -293,4 +309,26 @@ end
 
 function StateManager:getSortedList()
     return self.list
+end
+
+function StateManager:ignoreEntry(entry, creator)
+    local counter
+    local index = self.list:searchGreaterThanOrEqual(entry)
+    local entries = self.list:entries()
+    if index == nil then
+        error("Entry to ignore not found in the list1")
+    end
+    if entries[index]:uuid() ~= entry:uuid() then
+        error("Entry to ignore not found in the list2")
+    end
+
+    while index > 0 and entries[index]:time() == entry:time() do
+        counter = entries[index].co
+        index = index - 1
+    end
+    local ignoreEntry = IgnoreEntry.create(entry, creator, counter - 1)
+
+    if not self.list:uniqueInsert(ignoreEntry) then
+        error("Failed to insert ignore entry")
+    end
 end
