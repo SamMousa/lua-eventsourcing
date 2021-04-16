@@ -262,10 +262,12 @@ end
 
 --[[
     Sends an entry out over the guild channel, if allowed
+    @param LogEntry authEntry, the entry to use for auth checking, defaults to the entry that is to be transmitted
     @return bool whether we were authorized to send the message
+
 ]]--
-function ListSync:transmitViaGuild(entry)
-    if self.authorizationHandler(entry, UnitName("player")) then
+function ListSync:transmitViaGuild(entry, authEntry)
+    if self.authorizationHandler(authEntry or entry, UnitName("player")) then
         local message = BulkDataMessage.create()
         message:addEntry(self._stateManager:createListFromEntry(entry))
         send(self, message, "GUILD")

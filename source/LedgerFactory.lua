@@ -78,7 +78,7 @@ LedgerFactory.createLedger = function(table, send, registerReceiveHandler, autho
         end,
         ignoreEntry = function(entry)
             local ignoreEntry = stateManager:createIgnoreEntry(entry)
-            if listSync:transmitViaGuild(ignoreEntry) then
+            if listSync:transmitViaGuild(ignoreEntry, entry) then
                 -- only commit locally if we are authorized to send
                 sortedList:uniqueInsert(ignoreEntry)
             else
