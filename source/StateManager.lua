@@ -238,15 +238,12 @@ function StateManager:setUpdateInterval(interval)
 
         self:commitUncommittedEntries()
 
-        -- Skip state updates if we are in combat
-        if (UnitAffectingCombat("player")) then
-            return
-        end
-
         local success, message = pcall(updateState, self)
         if (not success) then
             self.ticker:Cancel()
             self.logger:Fatal("State update failed with error: %s", message)
+            local nexEntry = self.list:entries()[self.lastAppliedIndex + 1]
+            trigger(self, EVENT.MUTATOR_FAILED, nexEntry)
         end
 
     end)
