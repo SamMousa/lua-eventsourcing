@@ -84,4 +84,31 @@ stateManager:catchup()
 assertSame(0, stateManager:lag())
 assertEmpty(messages)
 assertNotSame('ignore this one', messages[#messages])
+
+
+------- Test that we get a mutator failed event with the entry that it failed on.
+
+stateManager:registerHandler(TestEntry, function(entry)
+    error("This entry is bad");
+end)
+
+local failedEntry = TestEntry:new('some entry')
+stateManager:catchup();
+sortedList:uniqueInsert(failedEntry)
+local mutatorFailed = 0
+local stateChanged = 0
+stateManager:addMutatorFailedListener(function(manager, entry)
+    mutatorFailed = mutatorFailed + 1
+    assertTrue(stateManager == manager)
+    assertTrue(entry == failedEntry)
+end);
+stateManager:addStateChangedListener(function(manager)
+    stateChanged = stateChanged + 1
+    assertTrue(stateManager == manager)
+end);
+stateManager:catchup();
+assertSame(1, mutatorFailed);
+assertSame(0, stateChanged);
+assertSame(1, stateManager:lag())
+
 printResultsAndExit()

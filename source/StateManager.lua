@@ -17,11 +17,19 @@ local IgnoreEntry = LibStub("EventSourcing/IgnoreEntry")
 local EVENT = {
     STATE_CHANGED = 'state',
     RESTART = 'restart',
+    MUTATOR_FAILED = 'mutator_failed'
 }
 
 local function hydrateEntryFromList(entry, data)
     for i, key in ipairs(entry:fields()) do
         entry[key] = data[i]
+    end
+end
+
+local function trigger(stateManager, event, ...)
+    for _, callback in ipairs(stateManager.listeners[event] or {}) do
+        -- trigger callback, pass state manager
+        callback(stateManager, ...)
     end
 end
 
@@ -41,6 +49,8 @@ local function applyEntry(stateManager, entry, index)
 
     --[[ Check ignored entries ]]--
     local uuid = entry:uuid();
+    local numbersForHash = LogEntry.numbersForHash(entry);
+
     if (stateManager.ignoredEntries[uuid] ~= nil) then
         stateManager.ignoredEntries[uuid] = nil
     else
@@ -57,13 +67,11 @@ local function applyEntry(stateManager, entry, index)
     stateManager.lastAppliedIndex = index
     stateManager.lastAppliedEntry = entry
 
-    result, hash = coroutine.resume(stateManager.checksumCoroutine, LogEntry.time(entry))
-    if not result then
-        error("Error updating state hash: " .. hash)
-    end
-    result, hash = coroutine.resume(stateManager.checksumCoroutine, LogEntry.creator(entry))
-    if not result then
-        error("Error updating state hash: " .. hash)
+    for _, v in ipairs(numbersForHash) do
+        result, hash = coroutine.resume(stateManager.checksumCoroutine, v)
+        if not result then
+            error("Error updating state hash: " .. hash)
+        end
     end
     stateManager.stateCheckSum = hash
 end
@@ -82,11 +90,11 @@ end
   The goal of each call is to remain under the frame render time
   Current solution: apply just 1 entry
 ]]--
-local function updateState(stateManager)
+local function updateState(stateManager, batchSize)
     local entries = stateManager.list:entries()
     local applied = 0
     restartIfRequired(stateManager)
-    while applied < stateManager.batchSize and stateManager.lastAppliedIndex < #entries do
+    while applied < batchSize and stateManager.lastAppliedIndex < #entries do
         local entry = entries[stateManager.lastAppliedIndex + 1]
         stateManager:castLogEntry(entry)
         -- This will throw an error if update fails, this is good since we don't want to update our tracking in that case.
@@ -94,7 +102,7 @@ local function updateState(stateManager)
         applied = applied + 1
     end
     if applied > 0 then
-        stateManager:trigger(EVENT.STATE_CHANGED)
+        trigger(stateManager, EVENT.STATE_CHANGED)
     end
 end
 -- END PRIVATE
@@ -182,24 +190,17 @@ end
 
 -- Applies all pending entries
 function StateManager:catchup(limit)
-    self:commitUncommittedEntries()
-    if self:lag() == 0 then
-        return
-    end
-    local entries = self.list:entries()
 
-    for i = self.lastAppliedIndex + 1, #entries do
-        local entry = entries[i]
-        self:castLogEntry(entry)
-        applyEntry(self, entry, self.lastAppliedIndex + 1)
-        if limit ~= nil then
-            limit = limit - 1
-            if limit == 0 then
-                break
-            end
+    self:commitUncommittedEntries()
+    local success, message = pcall(updateState, self, limit or #self.list:entries())
+    if (not success) then
+        if self.ticker ~= nil then
+            self.ticker:Cancel()
         end
+        self.logger:Fatal("State update failed with error: %s", message)
+        local nexEntry = self.list:entries()[self.lastAppliedIndex + 1]
+        trigger(self, EVENT.MUTATOR_FAILED, nexEntry)
     end
-    self:trigger(EVENT.STATE_CHANGED)
 end
 
 function StateManager:setBatchSize(size)
@@ -238,7 +239,7 @@ function StateManager:setUpdateInterval(interval)
 
         self:commitUncommittedEntries()
 
-        local success, message = pcall(updateState, self)
+        local success, message = pcall(updateState, self, self.batchSize)
         if (not success) then
             self.ticker:Cancel()
             self.logger:Fatal("State update failed with error: %s", message)
@@ -259,7 +260,7 @@ function StateManager:restart()
     self.lastAppliedEntry = nil
     self.stateCheckSum = 0
     self.checksumCoroutine = Util.IntegerChecksumCoroutine()
-    self:trigger(EVENT.RESTART)
+    trigger(self, EVENT.RESTART)
 end
 
 
@@ -283,25 +284,24 @@ end
 function StateManager:stateHash()
     return self.stateCheckSum
 end
-function StateManager:trigger(event)
-    for _, callback in ipairs(self.listeners[event] or {}) do
-        -- trigger callback, pass state manager
-        callback(self)
+
+local function addEventListener(stateManager, event, callback)
+    if stateManager.listeners[event] == nil then
+        stateManager.listeners[event] = {}
     end
+    table.insert(stateManager.listeners[event], callback)
 end
 
 function StateManager:addStateChangedListener(callback)
-    if self.listeners[EVENT.STATE_CHANGED] == nil then
-        self.listeners[EVENT.STATE_CHANGED] = {}
-    end
-    table.insert(self.listeners[EVENT.STATE_CHANGED], callback)
+    addEventListener(self, EVENT.STATE_CHANGED, callback);
 end
 
 function StateManager:addStateRestartListener(callback)
-    if self.listeners[EVENT.RESTART] == nil then
-        self.listeners[EVENT.RESTART] = {}
-    end
-    table.insert(self.listeners[EVENT.RESTART], callback)
+    addEventListener(self, EVENT.RESTART, callback);
+end
+
+function StateManager:addMutatorFailedListener(callback)
+    addEventListener(self, EVENT.MUTATOR_FAILED, callback);
 end
 
 function StateManager:getSortedList()
