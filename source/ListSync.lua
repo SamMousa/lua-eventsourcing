@@ -216,7 +216,7 @@ function ListSync:new(stateManager, sendMessage, registerReceiveHandler, authori
     self.__index = self
 
     o.advertiseTicker = nil
-    o.defaultAdvertiseCount = 4
+    o.advertiseCount = 4
     o.send = sendMessage
     o.sendLargeMessage = sendLargeMessage or sendMessage
     o.authorizationHandler = authorizationHandler
@@ -315,12 +315,12 @@ function ListSync:enableSending()
     end
     self.advertiseTicker = C_Timer.NewTicker(10, function()
 
-        -- Get week hash for the last 4 weeks.
+        -- Get week hash for the last  weeks.
         local now = Util.time()
         local currentWeek = Util.WeekNumber(now)
-        self.logger:Info("Announcing hashes of last %d weeks", self.defaultAdvertiseCount)
+        self.logger:Info("Announcing hashes of last %d weeks + 1 random week", self.advertiseCount)
         local message = AdvertiseHashMessage.create()
-        for i = 0, self.defaultAdvertiseCount - 1 do
+        for i = 0, self.advertiseCount - 1 do
             if (advertiseWeekHashInhibitorCheckOrSet(self, currentWeek - i)) then
                 local hash, count = weekHash(self, currentWeek - i)
                 message:addHash(currentWeek - i, hash, count)

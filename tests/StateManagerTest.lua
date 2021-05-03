@@ -6,7 +6,8 @@ local LogEntry = LibStub("EventSourcing/LogEntry")
 local Util = LibStub("EventSourcing/Util")
 local testData = {}
 local sortedList = LogEntry.sortedList(testData)
-local stateManager = StateManager:new(sortedList, Logger:New())
+local logs = {}
+local stateManager = StateManager:new(sortedList, Logger:New(logs))
 
 
 
@@ -36,6 +37,7 @@ assertSame(0, stateManager:stateHash())
 assertEmpty(messages)
 
 sortedList:uniqueInsert(TestEntry:new('test'))
+assertSame(1, sortedList:length())
 stateManager:catchup()
 assertCount(1, messages)
 for i = 1, 100 do
@@ -76,7 +78,7 @@ sortedList:uniqueInsert(entryToIgnore)
 stateManager:catchup()
 assertSame(0, stateManager:lag())
 assertSame('ignore this one', messages[#messages])
-local ignoreEntry = stateManager:createIgnoreEntry(entryToIgnore, "Bob")
+local ignoreEntry = stateManager:createIgnoreEntry(entryToIgnore, "Joe")
 sortedList:uniqueInsert(ignoreEntry)
 assertCount(2, sortedList:entries())
 assertSame(2, stateManager:lag())

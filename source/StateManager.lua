@@ -140,10 +140,11 @@ function StateManager:castLogEntry(table)
         error(string.format("Argument 1 must be of type table, %s given", type(table)))
     end
     -- Find which meta table we should use
-    if self.metatables[table.cls] == nil then
-        error("Unknown class: " .. table.cls)
+    local class = LogEntry.class(table)
+    if self.metatables[class] == nil then
+        error("Unknown class: " .. class)
     end
-    setmetatable(table, self.metatables[table.cls])
+    setmetatable(table, self.metatables[class])
 end
 
 function StateManager:queueRemoteEvent(entry)
@@ -181,11 +182,9 @@ end
 
 
 function StateManager:registerHandler(eventType, handler)
-    if eventType == nil or type(eventType) ~= "table" or eventType._cls == nil then
-        error("Event does not seem to have been created using LogEntry:extend()")
-    end
-    self.handlers[eventType._cls] = handler
-    self.metatables[eventType._cls] = eventType
+    local class = LogEntry.staticClassName(eventType)
+    self.handlers[class] = handler
+    self.metatables[class] = eventType
 end
 
 -- Applies all pending entries
@@ -198,8 +197,8 @@ function StateManager:catchup(limit)
             self.ticker:Cancel()
         end
         self.logger:Fatal("State update failed with error: %s", message)
-        local nexEntry = self.list:entries()[self.lastAppliedIndex + 1]
-        trigger(self, EVENT.MUTATOR_FAILED, nexEntry)
+        local nextEntry = self.list:entries()[self.lastAppliedIndex + 1]
+        trigger(self, EVENT.MUTATOR_FAILED, nextEntry)
     end
 end
 
@@ -320,9 +319,8 @@ function StateManager:createIgnoreEntry(entry, creator)
     end
 
     while index > 0 and entries[index]:time() == entry:time() do
-        counter = entries[index].co
+        counter = entries[index]:counter()
         index = index - 1
     end
-
     return IgnoreEntry.create(entry, creator, counter - 1)
 end

@@ -14,10 +14,16 @@ for i = 1, 100 do
     sortedList:uniqueInsert(entry)
 end
 
-local compareFunc = Util.CreateMultiFieldSorter('t', 'cr', 'co')
+local compareFunc = Util.CreateMultiFieldSorter(unpack(LogEntry.fields()))
 assertSame(-1, compareFunc(entries[1], entries[2]))
 assertSame(100, sortedList:length())
 
 
+
+-- Test extending hte class.
+local Extension = LogEntry:extend('TEST');
+assertSame('TEST', Extension:staticClassName())
+local extension = Extension:new()
+assertSame(Extension:staticClassName(), extension:class())
 
 printResultsAndExit()

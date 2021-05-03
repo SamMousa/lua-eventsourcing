@@ -49,6 +49,8 @@ function UnitGUID(target)
         return "00000000-0000-BOB-0000-0ABCDABCD"
     elseif target == "Bob" then
         return "00000000-0000-BOB-0000-0ABCDABCD"
+    elseif target == "Joe" then
+        return "00000000-0000-JOE-0000-0ABCDABCE"
     else
         error(string.format("Unknown target '%s'", target))
     end

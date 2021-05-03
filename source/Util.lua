@@ -47,7 +47,6 @@ function Util.IsSorted(list, comparator)
 end
 
 function Util.DumpTable(table, indent)
-
     indent = indent or 0;
 
     local keys = {};

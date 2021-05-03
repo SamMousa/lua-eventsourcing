@@ -7,6 +7,7 @@ for line in io.lines('LibEventSourcing.xml') do
 end
 math.randomseed(os.time())
 
+local Util = LibStub("EventSourcing/Util")
 local assertionStatistics = {
     total = 0,
     passed = 0,

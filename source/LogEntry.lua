@@ -14,10 +14,28 @@ local SortedList = LibStub("EventSourcing/SortedList")
     The assumption is that all field names are private to this file and other files will use functions to get what they need.
     Since functions are not serialized we do use descriptive names for the functions
 ]]--
+
+-- we use a random property name to guarantee people not accessing it.
+local privateStaticPrefix = Util.random(6)
+local privateStaticClass = privateStaticPrefix .. '_cls'
+
+--[[
+  These are property constants that we replace for more readability in our code
+  CHANGING THESE WILL BREAK ALL EXISTING LEDGER ENTRIES
+  THIS IS ALWAYS A MAJOR BREAKING CHANGE
+  ]]--
+local privateCreator = '_a'
+local privateCounter = '_b'
+local privateTimestamp = '_c'
+local privateClass = '_d'
+
+
+
 LogEntry.__index = LogEntry
-LogEntry._cls = 'LE'
-LogEntry._counter = 0
-LogEntry._lastTimestamp = 0
+LogEntry[privateStaticClass] = 'LE'
+
+local counter = 0
+local lastTimestamp = 0
 
 -- private constructor
 local function constructor(self)
@@ -35,77 +53,98 @@ function LogEntry:extend(identifier)
     o.__index = o
 
     -- static properties (won't appear on instances)
-    o._cls = identifier
+    o[privateStaticClass] = identifier
     return o
+end
+
+-- Check if the given table is an subclass of LogEntry
+function LogEntry.isSubClassType(child)
+    return child ~= nil
+        and type(child) == "table"
+        and child[privateStaticClass] ~= nil
+end
+
+function LogEntry.staticClassName(metatable)
+    if not LogEntry.isSubClassType(metatable) then
+        error("Class is not a child of LogEntry")
+    end
+    return metatable[privateStaticClass]
 end
 
 
 function LogEntry:new(creator)
     local o = constructor(self)
+    o[privateClass] = LogEntry.staticClassName(self)
 
-    o.cls = self._cls
-    if (self._cls == nil or type(self._cls) ~= "string" or string.len(self._cls) == 0) then
-        error("Could not determine class")
-    end
-
-    o.t = Util.time()
-    if o.t == LogEntry._lastTimestamp then
-        LogEntry._counter = LogEntry._counter + 1
+    o[privateTimestamp] = Util.time()
+    if o[privateTimestamp] == lastTimestamp then
+        counter = counter + 1
     else
-        LogEntry._lastTimestamp = o.t
-        LogEntry._counter = 0
+        lastTimestamp = o[privateTimestamp]
+        counter = 0
     end
-    o.co = LogEntry._counter
+    o[privateCounter] = counter
     if creator == nil then
-        o.cr = Util.getIntegerGuid("player")
+        o[privateCreator] = Util.getIntegerGuid("player")
     elseif type(creator) == 'string' then
-        o.cr = Util.getIntegerGuid(creator)
-        if (o.cr == nil) then
+        o[privateCreator] = Util.getIntegerGuid(creator)
+        if (o[privateCreator] == nil) then
             error(string.format("Failed to convert string `%s` into number", creator))
         end
     else
-        o.cr = creator
+        o[privateCreator] = creator
     end
 
     return o
 end
 
 function LogEntry:class()
-    return self.cls
+    return self[privateClass]
 end
 
 function LogEntry:time()
-    return self.t
+    return self[privateTimestamp]
+end
+
+function LogEntry:setTime(value)
+    self[privateTimestamp] = value
+end
+
+function LogEntry:setCounter(value)
+    self[privateCounter] = value
 end
 
 --[[
     Returns the numbers to be used
 ]]--
 function LogEntry:numbersForHash()
-    return {self.t, self.cr, self.co}
+    return {self[privateTimestamp], self[privateCounter], self[privateCreator]}
 end
 
 function LogEntry:creator()
-    return self.cr
+    return self[privateCreator]
 end
 
+function LogEntry:counter()
+    return self[privateCounter]
+end
 
 -- return int the weeknumber of this entry
 function LogEntry:weekNumber()
-    return Util.WeekNumber(self.t)
+    return Util.WeekNumber(self[privateTimestamp])
 end
 
 -- Return a sorted list set up for log entries
 function LogEntry.sortedList(data)
-    local r = SortedList:new(data or {}, Util.CreateMultiFieldSorter('t', 'co', 'cr'), true)
+    local r = SortedList:new(data or {}, Util.CreateMultiFieldSorter(unpack(LogEntry.fields())), true)
     if type(r.uniqueInsert) ~= 'function' then
         error("Error creating sorted list but doesn't have unique insert function")
     end
     return r
 end
 
-function LogEntry:fields()
-    return { "t", "co", "cr"}
+function LogEntry.fields()
+    return {privateTimestamp, privateCounter, privateCreator}
 end
 
 function LogEntry:uuid()

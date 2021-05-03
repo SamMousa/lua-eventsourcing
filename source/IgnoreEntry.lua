@@ -10,8 +10,8 @@ local IgnoreEntry = LogEntry:extend('IGN')
 function IgnoreEntry:new(entry, creator, counter)
     local o = LogEntry.new(self, creator)
     o.ref = entry:uuid()
-    o.t = entry:time()
-    o.co = counter
+    o:setTime(entry:time())
+    o:setCounter(counter)
     return o
 end
 
