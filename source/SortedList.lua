@@ -83,6 +83,12 @@ function SortedList:uniqueInsert(element)
     return true
 end
 
+function SortedList:head()
+    if #self._entries < 1 then
+        error("List is empty")
+    end
+    return self._entries[1]
+end
 function SortedList:wipe()
     for i, _ in ipairs(self._entries) do
         self._entries[i] = nil

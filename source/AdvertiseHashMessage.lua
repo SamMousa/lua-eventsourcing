@@ -8,9 +8,13 @@ local Message = LibStub("EventSourcing/Message")
 
 local AdvertiseHashMessage = Message:extend('AHM')
 
-function AdvertiseHashMessage:new()
+function AdvertiseHashMessage:new(firstWeek, entryCount, stateHash, lag)
     local o = Message.new(self)
     o.hashes = {}
+    o.firstWeek = firstWeek
+    o.totalEntryCount = entryCount
+    o.stateHash = stateHash
+    o.lag = lag
     return o
 end
 
@@ -21,8 +25,8 @@ function AdvertiseHashMessage:hashCount()
     return #self.hashes
 end
 
-function Factory.create()
-    return AdvertiseHashMessage:new()
+function Factory.create(firstWeek, entryCount, stateHash, lag)
+    return AdvertiseHashMessage:new(firstWeek, entryCount, stateHash, lag)
 end
 
 function Factory.type()
