@@ -113,6 +113,9 @@ local function handleAdvertiseMessage(message, sender, distribution, stateManage
     -- First we check every week's hash
     for _, whc in ipairs(message.hashes) do
         local week, hash, count = unpack(whc)
+        Util.assertNumber(week, 'week')
+        Util.assertNumber(hash, 'hash')
+        Util.assertNumber(hash, 'hash')
 
         -- If sender has priority over us we remove our advertisement, this will prevent us from sending data.
         if sender < listSync.playerName then

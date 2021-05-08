@@ -5,11 +5,12 @@ end
 
 
 local Message = LibStub("EventSourcing/Message")
-
+local Util = LibStub("EventSourcing/Util")
 local RequestWeekMessage = Message:extend('RW')
 
 function RequestWeekMessage:new(week)
     local o = Message.new(self)
+    Util.assertNumber(week, 'week')
     o.week = week
     return o
 end
