@@ -115,10 +115,11 @@ local function handleAdvertiseMessage(message, sender, distribution, stateManage
         local week, hash, count = unpack(whc)
         Util.assertNumber(week, 'week')
         Util.assertNumber(hash, 'hash')
-        Util.assertNumber(hash, 'hash')
+        Util.assertNumber(count, 'count')
 
         -- If sender has priority over us we remove our advertisement, this will prevent us from sending data.
         if sender < listSync.playerName then
+            listSync.logger:Info("Removing advertisement for week %d because %s has prio", week, sender)
             listSync.advertisedWeeks[week] = nil
         end
 
@@ -178,6 +179,7 @@ local function handleRequestWeekMessage(message, sender, distribution, stateMana
         -- We are not sending, but we do need to make sure to not request the same week
         requestWeekInhibitorSet(listSync, message.week)
     elseif distribution == "GUILD" and listSync:isSendingEnabled() then
+        listSync.logger:Info("Received request for week %d from %s, will attempt send in 5s", message.week, sender)
         C_Timer.After(5, function()
             -- check advertisements after delay, someone might have advertised after us and still gained priority
             if listSync.advertisedWeeks[message.week] ~= nil and listSync.advertisedWeeks[message.week] > Util.time() then
