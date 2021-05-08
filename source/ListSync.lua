@@ -32,7 +32,11 @@ end
 local function weekEntryIterator(listSync, week)
     local sortedList = listSync._stateManager:getSortedList()
 
-    local position = sortedList:searchGreaterThanOrEqual({t = Util.WeekStart(week) })
+    local search = LogEntry:new()
+    search:setTime(Util.WeekStart(week))
+    search:setCounter(-1 * math.huge)
+
+    local position = sortedList:searchGreaterThanOrEqual(search)
     local stateManager = listSync._stateManager
     local entries = sortedList:entries()
 
@@ -331,8 +335,12 @@ function ListSync:enableSending()
     self.advertiseTicker = C_Timer.NewTicker(10, function()
 
         -- Get week hash for the last  weeks.
+        local list = self._stateManager:getSortedList()
+        if list:length() == 0 then
+            return
+        end
         local now = Util.time()
-        local firstWeek = self._stateManager:getSortedList():head():weekNumber()
+        local firstWeek = LogEntry.weekNumber(list:head())
         local currentWeek = Util.WeekNumber(now)
         self.logger:Info("Announcing hashes of last %d weeks + %d rolling weeks starting at %d", self.advertiseCount, self.advertiseCount, self.advertiseRollingOffset)
         local message = AdvertiseHashMessage.create(
