@@ -99,6 +99,7 @@ end
 
 -- Return the 1-based unix epoch week number
 function Util.WeekNumber(unixtimestamp)
+    Util.assertNumber(unixtimestamp, 'unixtimestamp')
     return 1 + math.floor(unixtimestamp / 604800)
 end
 function Util.WeekStart(week)

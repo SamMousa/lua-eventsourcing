@@ -114,6 +114,10 @@ function LogEntry:setCounter(value)
     self[privateCounter] = value
 end
 
+function LogEntry:setClass(value)
+    self[privateClass] = value
+end
+
 --[[
     Returns the numbers to be used
 ]]--

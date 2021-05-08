@@ -150,9 +150,6 @@ end
 
 
 function StateManager:castLogEntry(table)
-    if type(table) ~= 'table' then
-        error(string.format("Argument 1 must be of type table, %s given", type(table)))
-    end
     -- Find which meta table we should use
     local class = LogEntry.class(table)
     if self.metatables[class] == nil then
@@ -190,7 +187,7 @@ function StateManager:createLogEntryFromClass(cls)
         error("Unknown class: " .. cls)
     end
     setmetatable(table, self.metatables[cls])
-    table.cls = cls
+    LogEntry.setClass(table, cls)
     return table
 end
 
@@ -229,7 +226,12 @@ end
 
 function StateManager:commitUncommittedEntries()
     for _, v in ipairs(self.uncommittedEntries) do
-        self.list:uniqueInsert(v)
+        if LogEntry.class(v) == nil then
+            self.logger:Warning("Ignoring entry without class")
+        else
+            self.list:uniqueInsert(v)
+        end
+
     end
     self.uncommittedEntries = {}
 end
