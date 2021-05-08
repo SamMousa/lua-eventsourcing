@@ -67,6 +67,8 @@ local function applyEntry(stateManager, entry, index)
     stateManager.lastAppliedIndex = index
     stateManager.lastAppliedEntry = entry
 
+    stateManager.updatingState = false
+
     for _, v in ipairs(numbersForHash) do
         result, hash = coroutine.resume(stateManager.checksumCoroutine, v)
         if not result then
@@ -105,6 +107,18 @@ local function updateState(stateManager, batchSize)
         trigger(stateManager, EVENT.STATE_CHANGED)
     end
 end
+
+local function safeUpdateState(stateManager, limit)
+    if (stateManager.updatingState) then
+        error("Recursive state update detected")
+    end
+
+    stateManager.updatingState = true
+    local success, message = pcall(updateState, stateManager, limit or #stateManager.list:entries())
+    stateManager.updatingState = false
+    return success, message
+end
+
 -- END PRIVATE
 
 function StateManager:new(list, logger)
@@ -191,7 +205,7 @@ end
 function StateManager:catchup(limit)
 
     self:commitUncommittedEntries()
-    local success, message = pcall(updateState, self, limit or #self.list:entries())
+    local success, message = safeUpdateState(self, limit)
     if (not success) then
         if self.ticker ~= nil then
             self.ticker:Cancel()
@@ -237,8 +251,7 @@ function StateManager:setUpdateInterval(interval)
         self.lastTick = t
 
         self:commitUncommittedEntries()
-
-        local success, message = pcall(updateState, self, self.batchSize)
+        local success, message = safeUpdateState(self, self.batchSize)
         if (not success) then
             self.ticker:Cancel()
             self.logger:Fatal("State update failed with error: %s", message)
