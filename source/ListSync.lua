@@ -180,7 +180,7 @@ local function handleRequestWeekMessage(message, sender, distribution, stateMana
     elseif distribution == "GUILD" and listSync:isSendingEnabled() then
         C_Timer.After(5, function()
             -- check advertisements after delay, someone might have advertised after us and still gained priority
-            if listSync.advertisedWeeks[message.week] > Util.time() then
+            if listSync.advertisedWeeks[message.week] ~= nil and listSync.advertisedWeeks[message.week] > Util.time() then
                 listSync:weekSyncViaGuild(message.week)
             end
         end)
