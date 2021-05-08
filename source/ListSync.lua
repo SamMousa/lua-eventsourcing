@@ -126,7 +126,7 @@ local function handleAdvertiseMessage(message, sender, distribution, stateManage
         local localHash, localCount = weekHash(listSync, week)
         advertiseWeekHashInhibitorSet(listSync, week)
         if  localHash == hash and localCount == count then
-            listSync.logger:Info("Received week %s hash from %s, we are in sync", week, sender)
+            listSync.logger:Debug("Received week %s hash from %s, we are in sync", week, sender)
         else
             projectedEntries = projectedEntries + count
             if requestWeekInhibitorCheck(listSync, week) then
@@ -179,13 +179,17 @@ local function handleRequestWeekMessage(message, sender, distribution, stateMana
         -- We are not sending, but we do need to make sure to not request the same week
         requestWeekInhibitorSet(listSync, message.week)
     elseif distribution == "GUILD" and listSync:isSendingEnabled() then
-        listSync.logger:Info("Received request for week %d from %s, will attempt send in 5s", message.week, sender)
-        C_Timer.After(5, function()
-            -- check advertisements after delay, someone might have advertised after us and still gained priority
-            if listSync.advertisedWeeks[message.week] ~= nil and listSync.advertisedWeeks[message.week] > Util.time() then
-                listSync:weekSyncViaGuild(message.week)
-            end
-        end)
+        if (listSync.advertisedWeeks[message.week] ~= nil) then
+            listSync.logger:Info("Received request for week %d from %s, will attempt send in 5s", message.week, sender)
+            C_Timer.After(5, function()
+                -- check advertisements after delay, someone might have advertised after us and still gained priority
+                if listSync.advertisedWeeks[message.week] ~= nil and listSync.advertisedWeeks[message.week] > Util.time() then
+                    listSync:weekSyncViaGuild(message.week)
+                end
+            end)
+        else
+            listSync.logger:Info("Ignoring request for week %d from %s, we did not advertise", message.week, sender)
+        end
 
     elseif distribution == "WHISPER" then
         listSync:weekSyncViaWhisper(sender, message.week)
@@ -347,7 +351,7 @@ function ListSync:enableSending()
         local now = Util.time()
         local firstWeek = LogEntry.weekNumber(list:head())
         local currentWeek = Util.WeekNumber(now)
-        self.logger:Info("Announcing hashes of last %d weeks + %d rolling weeks starting at %d", self.advertiseCount, self.advertiseCount, self.advertiseRollingOffset)
+        self.logger:Info("Announcing hashes of last %d weeks + %d rolling weeks starting at %d, first week with data is: %d", self.advertiseCount, self.advertiseCount, currentWeek - self.advertiseRollingOffset, firstWeek)
         local message = AdvertiseHashMessage.create(
             firstWeek,
             self._stateManager:getSortedList():length(),
@@ -364,22 +368,27 @@ function ListSync:enableSending()
         end
 
         -- historical rolling weeks
-        self.advertiseRollingOffset = self.advertiseRollingOffset + self.advertiseCount
-        if self.advertiseRollingOffset > currentWeek then
-            self.advertiseRollingOffset = 0
-        end
-
-        for i = 0, self.advertiseCount - 1 do
-            local checkWeek = currentWeek - self.advertiseRollingOffset - i
-            if (advertiseWeekHashInhibitorCheckOrSet(self,  checkWeek)) then
-                local hash, count = weekHash(self, checkWeek)
-                message:addHash(checkWeek, hash, count)
-                self.advertisedWeeks[checkWeek] = now + ADVERTISEMENT_TIMEOUT
+        if currentWeek - firstWeek > self.advertiseCount then
+            self.advertiseRollingOffset = self.advertiseRollingOffset + self.advertiseCount
+            if self.advertiseRollingOffset > (currentWeek - firstWeek) then
+                -- handle having non-multiples of 4 weeks of history
+                self.advertiseRollingOffset = currentWeek - firstWeek
+            end
+            for i = 0, self.advertiseCount - 1 do
+                local checkWeek = currentWeek - self.advertiseRollingOffset - i
+                if (advertiseWeekHashInhibitorCheckOrSet(self,  checkWeek)) then
+                    local hash, count = weekHash(self, checkWeek)
+                    message:addHash(checkWeek, hash, count)
+                    self.advertisedWeeks[checkWeek] = now + ADVERTISEMENT_TIMEOUT
+                end
+            end
+            if self.advertiseRollingOffset == (currentWeek - firstWeek) then
+                self.advertiseRollingOffset = 0
             end
         end
 
         if (message:hashCount() > 0) then
-            self.logger:Trace("Sending hashes for %d weeks", message:hashCount())
+            self.logger:Info("Sending hashes for %d weeks", message:hashCount())
             send(self, message, "GUILD")
         else
             self.logger:Info("Skipping send since all weeks are inhibited")
