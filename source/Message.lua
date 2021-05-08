@@ -39,10 +39,20 @@ function Message:new()
     return o
 end
 
-function Message.cast(table)
-    if type(table) == "table" and table.type ~= nil and Message._types[table.type] ~= nil then
-        setmetatable(table, Message._types[table.type])
-        return true
+function Message:validate()
+    Util.assertString(self.type)
+    Util.assertNumber(self.created, 'created')
+end
+
+function Message.cast(message)
+    if type(message) == "table" and message.type ~= nil and Message._types[message.type] ~= nil then
+        setmetatable(message, Message._types[message.type])
+        local result, error = pcall(message.validate, message)
+        if not result then
+            print(error)
+
+        end
+        return result
     end
     return false
 end

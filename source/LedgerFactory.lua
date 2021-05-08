@@ -110,6 +110,15 @@ LedgerFactory.createLedger = function(table, send, registerReceiveHandler, autho
         end,
         disableSending = function()
             listSync:disableSending()
+        end,
+        getPeerStatus = function()
+            return listSync:getPeerStatus()
+        end,
+        requestPeerStatusFromRaid = function()
+            listSync:requestPeerStatusFromRaid()
+        end,
+        requestPeerStatusFromGuild = function()
+            listSync:requestPeerStatusFromGuild()
         end
 
 

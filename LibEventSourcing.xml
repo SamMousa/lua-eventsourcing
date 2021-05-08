@@ -12,6 +12,8 @@
     <Script file="source\WeekDataMessage.lua"/>
     <Script file="source\BulkDataMessage.lua"/>
     <Script file="source\RequestWeekMessage.lua"/>
+    <Script file="source\RequestStateMessage.lua"/>
+    <Script file="source\StateMessage.lua"/>
     <Script file="source\ListSync.lua"/>
     <Script file="source\LedgerFactory.lua"/>
 </Ui>

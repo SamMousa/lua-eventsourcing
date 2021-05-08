@@ -263,6 +263,11 @@ function Util.assertTable(arg, name, optional)
     return Util.assertType(arg, name, 'table', optional)
 end
 
+function Util.assertString(arg, name, optional)
+    return Util.assertType(arg, name, 'string', optional)
+end
+
+
 function Util.assertNumber(arg, name, optional)
     return Util.assertType(arg, name, 'number', optional)
 end

@@ -15,6 +15,10 @@ function RequestWeekMessage:new(week)
     return o
 end
 
+function RequestWeekMessage:validate()
+    Message.validate(self)
+    Util.assertNumber(self.week, 'week')
+end
 
 
 function Factory.create(week)

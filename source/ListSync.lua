@@ -12,11 +12,15 @@ local Util = LibStub("EventSourcing/Util")
 local AdvertiseHashMessage = LibStub("EventSourcing/Message/AdvertiseHash")
 local WeekDataMessage = LibStub("EventSourcing/Message/WeekData")
 local RequestWeekMessage = LibStub("EventSourcing/Message/RequestWeek")
+local RequestStateMessage = LibStub("EventSourcing/Message/RequestState")
+local StateMessage = LibStub("EventSourcing/Message/State")
 local BulkDataMessage = LibStub("EventSourcing/Message/BulkData")
 local Message = LibStub("EventSourcing/Message")
 
 
 local ADVERTISEMENT_TIMEOUT = 30
+local CHANNEL_GUILD = "GUILD"
+local CHANNEL_RAID = "RAID"
 
 
 
@@ -26,6 +30,15 @@ local ADVERTISEMENT_TIMEOUT = 30
 ]]--
 local function send(listSync, message, distribution, target)
     listSync.send(message, distribution, target)
+end
+
+local function updatePeerStatus(listSync, peer, stateHash, lag, count)
+    listSync.peerStatus[peer] = {
+        stateHash = stateHash,
+        lag = lag,
+        count = count,
+        timestamp = Util.time()
+    }
 end
 
 
@@ -113,9 +126,6 @@ local function handleAdvertiseMessage(message, sender, distribution, stateManage
     -- First we check every week's hash
     for _, whc in ipairs(message.hashes) do
         local week, hash, count = unpack(whc)
-        Util.assertNumber(week, 'week')
-        Util.assertNumber(hash, 'hash')
-        Util.assertNumber(count, 'count')
 
         -- If sender has priority over us we remove our advertisement, this will prevent us from sending data.
         if sender < listSync.playerName then
@@ -132,10 +142,12 @@ local function handleAdvertiseMessage(message, sender, distribution, stateManage
             if requestWeekInhibitorCheck(listSync, week) then
                 listSync.logger:Info("Requesting data for week %s", week)
                 requestWeekInhibitorSet(listSync, week)
-                send(listSync, RequestWeekMessage.create(week), "GUILD")
+                send(listSync, RequestWeekMessage.create(week), CHANNEL_GUILD)
             end
         end
     end
+
+    updatePeerStatus(listSync, sender, message.stateHash, message.lag, message.totalEntryCount)
     -- Then we check data set properties to decide if we might be far behind.
     if projectedEntries < message.totalEntryCount then
         -- We have fewer entries than the sender
@@ -175,10 +187,10 @@ local function handleBulkDataMessage(message, sender, distribution, stateManager
 end
 
 local function handleRequestWeekMessage(message, sender, distribution, stateManager, listSync)
-    if distribution == "GUILD" and not listSync:isSendingEnabled() then
+    if distribution == CHANNEL_GUILD and not listSync:isSendingEnabled() then
         -- We are not sending, but we do need to make sure to not request the same week
         requestWeekInhibitorSet(listSync, message.week)
-    elseif distribution == "GUILD" and listSync:isSendingEnabled() then
+    elseif distribution == CHANNEL_GUILD and listSync:isSendingEnabled() then
         if (listSync.advertisedWeeks[message.week] ~= nil) then
             listSync.logger:Info("Received request for week %d from %s, will attempt send in 5s", message.week, sender)
             C_Timer.After(5, function()
@@ -195,6 +207,14 @@ local function handleRequestWeekMessage(message, sender, distribution, stateMana
         listSync:weekSyncViaWhisper(sender, message.week)
     end
 
+end
+
+local function handleRequestStateMessage(message, sender, distribution, stateManager, listSync)
+    send(listSync, StateMessage.create(stateManager:stateHash(), stateManager:getSortedList():length(), stateManager:lag()), "WHISPER", sender)
+end
+
+local function handleStateMessage(message, sender, distribution, stateManager, listSync)
+    updatePeerStatus(listSync, sender, message.stateHash, message.lag, message.totalEntryCount)
 end
 
 
@@ -228,6 +248,16 @@ local function advertiseWeekHashInhibitorCheckOrSet(listSync, week)
     return false
 end
 
+local function transmitEntry(listSync, entry, authEntry, channel)
+    if listSync.authorizationHandler(authEntry or entry, UnitName("player")) then
+        local message = BulkDataMessage.create()
+        message:addEntry(listSync._stateManager:createListFromEntry(entry))
+        send(listSync, message, channel)
+        return true
+    end
+    return false
+end
+
 function ListSync:new(stateManager, sendMessage, registerReceiveHandler, authorizationHandler, sendLargeMessage, logger)
     Util.assertInstanceOf(stateManager, StateManager)
     Util.assertFunction(sendMessage, "send")
@@ -235,8 +265,6 @@ function ListSync:new(stateManager, sendMessage, registerReceiveHandler, authori
     Util.assertFunction(authorizationHandler, "authorizationHandler")
     Util.assertFunction(sendLargeMessage, "sendLargeMessage", true)
     Util.assertLogger(logger)
-
-
 
     local o = {}
     setmetatable(o, self)
@@ -266,6 +294,8 @@ function ListSync:new(stateManager, sendMessage, registerReceiveHandler, authori
     o.messageHandlers[WeekDataMessage.type()] = { handleWeekDataMessage }
     o.messageHandlers[BulkDataMessage.type()] = { handleBulkDataMessage }
     o.messageHandlers[RequestWeekMessage.type()] = { handleRequestWeekMessage }
+    o.messageHandlers[RequestStateMessage.type()] = { handleRequestStateMessage }
+    o.messageHandlers[StateMessage.type()] = { handleStateMessage }
     o.inhibitors = {}
     -- Inhibitor for sending hash advertisements, format is week => timestamp inhibition ends
     o.inhibitors[AdvertiseHashMessage.type()] = {}
@@ -285,6 +315,8 @@ function ListSync:new(stateManager, sendMessage, registerReceiveHandler, authori
 
     -- Format week => timestamp, advertisements are valid for a limited time only
     o.advertisedWeeks = {}
+
+    o.peerStatus = {}
     return o
 end
 
@@ -294,18 +326,19 @@ end
     @return bool whether we were authorized to send the message
 
 ]]--
+
 function ListSync:transmitViaGuild(entry, authEntry)
-    if self.authorizationHandler(authEntry or entry, UnitName("player")) then
-        local message = BulkDataMessage.create()
-        message:addEntry(self._stateManager:createListFromEntry(entry))
-        send(self, message, "GUILD")
-        return true
-    end
-    return false
+    return transmitEntry(self, entry, authEntry, CHANNEL_GUILD)
+end
+
+function ListSync:transmitViaRaid(entry, authEntry)
+    return transmitEntry(self, entry, authEntry, CHANNEL_RAID)
 end
 
 
-
+function ListSync:getPeerStatus()
+    return self.peerStatus
+end
 
 function ListSync:weekSyncViaWhisper(target, week)
     local message = WeekDataMessage.create(week, weekHash(self, week))
@@ -320,7 +353,7 @@ function ListSync:weekSyncViaGuild(week)
     for entry in weekEntryIterator(self, week) do
         message:addEntry(self._stateManager:createListFromEntry(entry))
     end
-    self.sendLargeMessage(message, "GUILD")
+    self.sendLargeMessage(message, CHANNEL_GUILD)
 end
 
 function ListSync:fullSyncViaWhisper(target)
@@ -389,11 +422,19 @@ function ListSync:enableSending()
 
         if (message:hashCount() > 0) then
             self.logger:Info("Sending hashes for %d weeks", message:hashCount())
-            send(self, message, "GUILD")
+            send(self, message, CHANNEL_GUILD)
         else
             self.logger:Info("Skipping send since all weeks are inhibited")
         end
     end)
+end
+
+function ListSync:requestPeerStatusFromRaid()
+    send(self, RequestStateMessage.create(), CHANNEL_RAID)
+end
+
+function ListSync:requestPeerStatusFromGuild()
+    send(self, RequestStateMessage.create(), CHANNEL_GUILD)
 end
 
 function ListSync:disableSending()
