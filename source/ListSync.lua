@@ -23,7 +23,13 @@ local CHANNEL_GUILD = "GUILD"
 local CHANNEL_RAID = "RAID"
 local CHANNEL_WHISPER = "WHISPER"
 
+local STATUS_SYNCED = "synced"
+local STATUS_OUT_OF_SYNC = "out_of_sync"
+local STATUS_UNKNOWN = "unknown"
 
+local EVENT = {
+    SYNC_STATE_CHANGED = 'sync_state_changed',
+}
 
 --[[
   Internally we use the secure channel for large messages to prevent DoS,
@@ -33,6 +39,26 @@ local function send(listSync, message, distribution, target)
     listSync.send(message, distribution, target)
 end
 
+local function trigger(listSync, event, ...)
+    for _, callback in ipairs(listSync.listeners[event] or {}) do
+        callback(listSync, ...)
+    end
+end
+local function addEventListener(listSync, event, callback)
+    if listSync.listeners[event] == nil then
+        listSync.listeners[event] = {}
+    end
+    table.insert(listSync.listeners[event], callback)
+end
+
+local function setSyncState(listSync, status)
+    if listSync.syncStatus ~= status then
+        listSync.syncStatusTime = Util.time()
+        listSync.syncStatus = status
+        trigger(listSync, EVENT.SYNC_STATE_CHANGED, status)
+    end
+end
+
 local function updatePeerStatus(listSync, peer, stateHash, lag, count)
     listSync.peerStatus[peer] = {
         stateHash = stateHash,
@@ -40,6 +66,11 @@ local function updatePeerStatus(listSync, peer, stateHash, lag, count)
         count = count,
         timestamp = Util.time()
     }
+    if listSync.stateManager:stateHash() == stateHash then
+        setSyncState(listSync, STATUS_SYNCED)
+    else
+        setSyncState(listSync, STATUS_OUT_OF_SYNC)
+    end
 end
 
 
@@ -157,6 +188,9 @@ local function handleAdvertiseMessage(message, sender, distribution, stateManage
 
 end
 
+
+
+
 local function handleWeekDataMessage(message, sender, distribution, stateManager, listSync)
     local count = 0
     for _, v in ipairs(message.entries) do
@@ -271,6 +305,7 @@ function ListSync:new(stateManager, sendMessage, registerReceiveHandler, authori
     setmetatable(o, self)
     self.__index = self
 
+    o.listeners = {}
     o.advertiseTicker = nil
     o.advertiseCount = 4
     o.advertiseRollingOffset = 0
@@ -318,6 +353,15 @@ function ListSync:new(stateManager, sendMessage, registerReceiveHandler, authori
     o.advertisedWeeks = {}
 
     o.peerStatus = {}
+
+    o.syncStatusTime = 0
+    C_Timer.NewTicker(10, function()
+        if o.syncStatusTime + 90 < Util.time() then
+            setSyncState(o, STATUS_UNKNOWN)
+        end
+
+
+    end)
     return o
 end
 
@@ -339,6 +383,10 @@ end
 
 function ListSync:getPeerStatus()
     return self.peerStatus
+end
+
+function ListSync:addStateChangedListener(callback)
+    addEventListener(self, EVENT.STATE_CHANGED, callback);
 end
 
 function ListSync:weekSyncViaWhisper(target, week)
@@ -376,7 +424,6 @@ function ListSync:enableSending()
         return
     end
     self.advertiseTicker = C_Timer.NewTicker(10, function()
-
         -- Get week hash for the last  weeks.
         local list = self._stateManager:getSortedList()
         if list:length() == 0 then

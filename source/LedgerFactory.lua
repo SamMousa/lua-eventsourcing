@@ -97,6 +97,9 @@ LedgerFactory.createLedger = function(table, send, registerReceiveHandler, autho
         addMutatorFailedListener = function(callback)
             stateManager:addMutatorFailedListener(callback)
         end,
+        addSyncStateChangedListener = function(callback)
+            listSync:addSyncStateChangedListener(callback)
+        end,
         addStateChangedListener = function(callback)
             -- We hide the state manager from this callback
             --
