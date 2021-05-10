@@ -135,8 +135,8 @@ local function handleAdvertiseMessage(message, sender, distribution, stateManage
         end
 
         local localHash, localCount = weekHash(listSync, week)
-        advertiseWeekHashInhibitorSet(listSync, week)
         if  localHash == hash and localCount == count then
+            advertiseWeekHashInhibitorSet(listSync, week)
             listSync.logger:Debug("Received week %s hash from %s, we are in sync", week, sender)
         else
             projectedEntries = projectedEntries + count
