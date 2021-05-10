@@ -21,6 +21,7 @@ local Message = LibStub("EventSourcing/Message")
 local ADVERTISEMENT_TIMEOUT = 30
 local CHANNEL_GUILD = "GUILD"
 local CHANNEL_RAID = "RAID"
+local CHANNEL_WHISPER = "WHISPER"
 
 
 
@@ -203,14 +204,14 @@ local function handleRequestWeekMessage(message, sender, distribution, stateMana
             listSync.logger:Info("Ignoring request for week %d from %s, we did not advertise", message.week, sender)
         end
 
-    elseif distribution == "WHISPER" then
+    elseif distribution == CHANNEL_WHISPER then
         listSync:weekSyncViaWhisper(sender, message.week)
     end
 
 end
 
 local function handleRequestStateMessage(message, sender, distribution, stateManager, listSync)
-    send(listSync, StateMessage.create(stateManager:stateHash(), stateManager:getSortedList():length(), stateManager:lag()), "WHISPER", sender)
+    send(listSync, StateMessage.create(stateManager:stateHash(), stateManager:getSortedList():length(), stateManager:lag()), CHANNEL_WHISPER, sender)
 end
 
 local function handleStateMessage(message, sender, distribution, stateManager, listSync)
@@ -345,7 +346,7 @@ function ListSync:weekSyncViaWhisper(target, week)
     for entry in weekEntryIterator(self, week) do
         message:addEntry(self._stateManager:createListFromEntry(entry))
     end
-    send(self, message, "WHISPER", target)
+    send(self, message, CHANNEL_WHISPER, target)
 end
 
 function ListSync:weekSyncViaGuild(week)
@@ -362,7 +363,7 @@ function ListSync:fullSyncViaWhisper(target)
         message:addEntry(self._stateManager:createListFromEntry(v))
     end
 
-    send(self, message, "WHISPER", target);
+    send(self, message, CHANNEL_WHISPER, target);
 end
 
 function ListSync:isSendingEnabled()
@@ -384,7 +385,7 @@ function ListSync:enableSending()
         local now = Util.time()
         local firstWeek = LogEntry.weekNumber(list:head())
         local currentWeek = Util.WeekNumber(now)
-        self.logger:Info("Announcing hashes of last %d weeks + %d rolling weeks starting at %d, first week with data is: %d", self.advertiseCount, self.advertiseCount, currentWeek - self.advertiseRollingOffset, firstWeek)
+        self.logger:Debug("Announcing hashes of last %d weeks + %d rolling weeks starting at %d, first week with data is: %d", self.advertiseCount, self.advertiseCount, currentWeek - self.advertiseRollingOffset, firstWeek)
         local message = AdvertiseHashMessage.create(
             firstWeek,
             self._stateManager:getSortedList():length(),
@@ -421,10 +422,10 @@ function ListSync:enableSending()
         end
 
         if (message:hashCount() > 0) then
-            self.logger:Info("Sending hashes for %d weeks", message:hashCount())
+            self.logger:Debug("Sending hashes for %d weeks", message:hashCount())
             send(self, message, CHANNEL_GUILD)
         else
-            self.logger:Info("Skipping send since all weeks are inhibited")
+            self.logger:Debug("Skipping send since all weeks are inhibited")
         end
     end)
 end
