@@ -29,7 +29,11 @@ end
 local function trigger(stateManager, event, ...)
     for _, callback in ipairs(stateManager.listeners[event] or {}) do
         -- trigger callback, pass state manager
-        callback(stateManager, ...)
+        local success, result = pcall(callback, stateManager, ...)
+        if not success then
+            stateManager.logger:Warning("Event handler for event %s failed with error %s", event, result);
+        end
+
     end
 end
 

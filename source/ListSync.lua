@@ -55,6 +55,7 @@ local function setSyncState(listSync, status)
     if listSync.syncStatus ~= status then
         listSync.syncStatusTime = Util.time()
         listSync.syncStatus = status
+        listSync.logger:Info("Sync status changed to: %s", status)
         trigger(listSync, EVENT.SYNC_STATE_CHANGED, status)
     end
 end
@@ -160,8 +161,8 @@ local function handleAdvertiseMessage(message, sender, distribution, stateManage
         local week, hash, count = unpack(whc)
 
         -- If sender has priority over us we remove our advertisement, this will prevent us from sending data.
-        if sender < listSync.playerName then
-            listSync.logger:Info("Removing advertisement for week %d because %s has prio", week, sender)
+        if sender < listSync.playerName and listSync.advertisedWeeks[week] ~= nil then
+            listSync.logger:Debug("Removing advertisement for week %d because %s has prio", week, sender)
             listSync.advertisedWeeks[week] = nil
         end
 
