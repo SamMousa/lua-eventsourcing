@@ -386,6 +386,7 @@ function ListSync:getPeerStatus()
 end
 
 function ListSync:addSyncStateChangedListener(callback)
+    Util.assertFunction(callback, 'callback')
     addEventListener(self, EVENT.SYNC_STATE_CHANGED, callback);
 end
 
