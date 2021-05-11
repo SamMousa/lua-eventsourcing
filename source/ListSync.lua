@@ -59,14 +59,14 @@ local function setSyncState(listSync, status)
     end
 end
 
-local function updatePeerStatus(listSync, peer, stateHash, lag, count)
+local function updatePeerStatus(listSync, stateManager, peer, stateHash, lag, count)
     listSync.peerStatus[peer] = {
         stateHash = stateHash,
         lag = lag,
         count = count,
         timestamp = Util.time()
     }
-    if listSync.stateManager:stateHash() == stateHash then
+    if stateManager:stateHash() == stateHash then
         setSyncState(listSync, STATUS_SYNCED)
     else
         setSyncState(listSync, STATUS_OUT_OF_SYNC)
@@ -179,7 +179,7 @@ local function handleAdvertiseMessage(message, sender, distribution, stateManage
         end
     end
 
-    updatePeerStatus(listSync, sender, message.stateHash, message.lag, message.totalEntryCount)
+    updatePeerStatus(listSync, stateManager, sender, message.stateHash, message.lag, message.totalEntryCount)
     -- Then we check data set properties to decide if we might be far behind.
     if projectedEntries < message.totalEntryCount then
         -- We have fewer entries than the sender
@@ -249,7 +249,7 @@ local function handleRequestStateMessage(message, sender, distribution, stateMan
 end
 
 local function handleStateMessage(message, sender, distribution, stateManager, listSync)
-    updatePeerStatus(listSync, sender, message.stateHash, message.lag, message.totalEntryCount)
+    updatePeerStatus(listSync, stateManager, sender, message.stateHash, message.lag, message.totalEntryCount)
 end
 
 
