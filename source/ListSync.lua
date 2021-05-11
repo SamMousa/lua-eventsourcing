@@ -385,8 +385,8 @@ function ListSync:getPeerStatus()
     return self.peerStatus
 end
 
-function ListSync:addStateChangedListener(callback)
-    addEventListener(self, EVENT.STATE_CHANGED, callback);
+function ListSync:addSyncStateChangedListener(callback)
+    addEventListener(self, EVENT.SYNC_STATE_CHANGED, callback);
 end
 
 function ListSync:weekSyncViaWhisper(target, week)
