@@ -451,21 +451,19 @@ function ListSync:enableSending()
         end
 
         -- historical rolling weeks
-        if currentWeek - firstWeek > self.advertiseCount then
-            self.advertiseRollingOffset = self.advertiseRollingOffset + self.advertiseCount
-            if self.advertiseRollingOffset > (currentWeek - firstWeek) then
-                -- handle having non-multiples of 4 weeks of history
-                self.advertiseRollingOffset = currentWeek - firstWeek
-            end
-            for i = 0, self.advertiseCount - 1 do
-                local checkWeek = currentWeek - self.advertiseRollingOffset - i
-                if (advertiseWeekHashInhibitorCheckOrSet(self,  checkWeek)) then
+        local weeksWithData = currentWeek - firstWeek + 1
+        local rollingWeekOffsetLimit = weeksWithData - self.advertiseCount - 1
+        if rollingWeekOffsetLimit >= 0 then
+            local firstHistoricalWeek = currentWeek - self.advertiseCount - self.advertiseRollingOffset
+            for checkWeek = firstHistoricalWeek, firstHistoricalWeek - self.advertiseCount + 1, -1 do
+                if (checkWeek >= firstWeek and advertiseWeekHashInhibitorCheckOrSet(self,  checkWeek)) then
                     local hash, count = weekHash(self, checkWeek)
                     message:addHash(checkWeek, hash, count)
                     self.advertisedWeeks[checkWeek] = now + ADVERTISEMENT_TIMEOUT
                 end
             end
-            if self.advertiseRollingOffset == (currentWeek - firstWeek) then
+            -- Reset the rolling weeks, we've reached the start of our data
+            if self.advertiseRollingOffset >= rollingWeekOffsetLimit then
                 self.advertiseRollingOffset = 0
             end
         end
