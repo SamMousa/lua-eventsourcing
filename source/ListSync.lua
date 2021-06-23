@@ -67,11 +67,6 @@ local function updatePeerStatus(listSync, stateManager, peer, stateHash, lag, co
         count = count,
         timestamp = Util.time()
     }
-    if stateManager:stateHash() == stateHash then
-        setSyncState(listSync, STATUS_SYNCED)
-    else
-        setSyncState(listSync, STATUS_OUT_OF_SYNC)
-    end
 end
 
 
@@ -156,6 +151,7 @@ end
 local function handleAdvertiseMessage(message, sender, distribution, stateManager, listSync)
     -- This is the number of entries we expect to have after all data from advertisements in this message have been synced
     local projectedEntries = stateManager:getSortedList():length()
+    local currentWeek = Util.WeekNumber(now)
     -- First we check every week's hash
     for _, whc in ipairs(message.hashes) do
         local week, hash, count = unpack(whc)
@@ -171,7 +167,12 @@ local function handleAdvertiseMessage(message, sender, distribution, stateManage
             advertiseWeekHashInhibitorSet(listSync, week)
             listSync.logger:Debug("Received week %s hash from %s, we are in sync", week, sender)
         else
-            projectedEntries = projectedEntries + count
+            -- local hash is out of sync
+            -- mark us as out of sync only if we have fewer entries or if this is not the current week
+            if week ~= currentWeek or count > localCount then
+                setSyncState(listSync, STATUS_OUT_OF_SYNC)
+            end
+            projectedEntries = projectedEntries + math.max(0, localCount - count)
             if requestWeekInhibitorCheck(listSync, week) then
                 listSync.logger:Info("Requesting data for week %s", week)
                 requestWeekInhibitorSet(listSync, week)
@@ -181,6 +182,9 @@ local function handleAdvertiseMessage(message, sender, distribution, stateManage
     end
 
     updatePeerStatus(listSync, stateManager, sender, message.stateHash, message.lag, message.totalEntryCount)
+    if (message.stateHash == stateManager:stateHash()) then
+        setSyncState(listSync, STATUS_SYNCED)
+    end
     -- Then we check data set properties to decide if we might be far behind.
     if projectedEntries < message.totalEntryCount then
         -- We have fewer entries than the sender
