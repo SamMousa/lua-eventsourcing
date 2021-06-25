@@ -151,6 +151,7 @@ end
 local function handleAdvertiseMessage(message, sender, distribution, stateManager, listSync)
     -- This is the number of entries we expect to have after all data from advertisements in this message have been synced
     local projectedEntries = stateManager:getSortedList():length()
+    local now = Util.time()
     local currentWeek = Util.WeekNumber(now)
     -- First we check every week's hash
     for _, whc in ipairs(message.hashes) do
@@ -236,7 +237,7 @@ local function handleRequestWeekMessage(message, sender, distribution, stateMana
             C_Timer.After(5, function()
                 -- check advertisements after delay, someone might have advertised after us and still gained priority
                 if listSync.advertisedWeeks[message.week] ~= nil and listSync.advertisedWeeks[message.week] > Util.time() then
-                    -- Remove our advertisement for this week, this prevents multiple times from sending data
+                    -- Remove our advertisement for this week, this prevents multiple requests leading to multiple sends
                     listSync.advertisedWeeks[message.week] = nil
                     listSync:weekSyncViaGuild(message.week)
                 end
