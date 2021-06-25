@@ -236,6 +236,8 @@ local function handleRequestWeekMessage(message, sender, distribution, stateMana
             C_Timer.After(5, function()
                 -- check advertisements after delay, someone might have advertised after us and still gained priority
                 if listSync.advertisedWeeks[message.week] ~= nil and listSync.advertisedWeeks[message.week] > Util.time() then
+                    -- Remove our advertisement for this week, this prevents multiple times from sending data
+                    listSync.advertisedWeeks[message.week] = nil
                     listSync:weekSyncViaGuild(message.week)
                 end
             end)
