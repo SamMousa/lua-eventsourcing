@@ -40,6 +40,10 @@ end
 function SortedList:state()
     return self._state
 end
+
+--[[
+   Inserts an element into the list, returns the position of the inserted element
+]]
 function SortedList:insert(element)
     if (self._unique) then
         error("This list only supports uniqueInsert")
@@ -54,8 +58,10 @@ function SortedList:insert(element)
     local position = Util.BinarySearch(self._entries, element, self._compare)
     if position == nil then
         table.insert(self._entries, element)
+        return #self._entries
     else
         table.insert(self._entries, position, element)
+        return position
     end
 end
 
@@ -108,4 +114,28 @@ end
 
 function SortedList:searchGreaterThanOrEqual(entry)
     return Util.BinarySearch(self._entries, entry, self._compare)
+end
+
+--[[
+    Remove an element from the list
+]]
+function SortedList:remove(entry)
+    local position = self:searchGreaterThanOrEqual(entry)
+    Util.DumpTable(entry)
+    print(position)
+    if position == nil or entry == self._entries[position] then
+        error("Element to remove not found")
+    end
+    self._entries[position] = nil
+    return position
+end
+
+--[[
+    Update an element in the list, the assumption here is that the table contents have changed and thus
+    the result of the compare function might have changed too.
+]]
+function SortedList:update(entry)
+    local oldPosition = self:remove(entry)
+    local newPosition = self:insert(entry)
+    return oldPosition, newPosition
 end

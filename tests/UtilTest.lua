@@ -37,5 +37,31 @@ local function TestBinarySearch()
 
 end
 
+local function TestBinarySearchDuplicates()
+    local comparator = function(a, b)
+        if a.val < b.val then
+            return -1
+        elseif a.val > b.val then
+            return 1
+        else
+            return 0
+        end
+    end
+    local search = { val = 2 }
+    local cases = {
+        { list = {{ val = 1 }, { val = 2 }, search, { val = 2 }}, search = search, expected =  3 },
+        { list = {{ val = 1 }, { val = 1 }, { val = 1 }, { val = 2, a = 4 }, { val = 2, b = 6 }, search}, search = search, expected =  6 },
+        { list = {{ val = 1 }, search, { val = 2 }, { val = 2 }}, search = search, expected =  2 },
+        { list = {{ val = 1 }, search, { val = 2 }, { val = 2 }, { val = 2 }, { val = 2 }, { val = 2 }, { val = 2 }}, search = search, expected =  2 }
+    }
+
+    for _, v in ipairs(cases) do
+        local result = Util.BinarySearch(v.list, v.search, comparator)
+        assertSame(v.expected, result)
+    end
+
+end
+
 TestBinarySearch()
+TestBinarySearchDuplicates()
 printResultsAndExit()

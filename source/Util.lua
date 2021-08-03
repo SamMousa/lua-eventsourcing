@@ -21,6 +21,23 @@ function Util.BinarySearch(list, value, comparator, min, max)
 
     local result = comparator(list[test], value)
 
+    if result == 0 then
+        if (list[test] == value) then
+            return test
+        end
+        -- Linear search left side
+        local linearTest = test
+        while linearTest > 1 and result == 0 do
+            linearTest = linearTest - 1
+            result = comparator(list[linearTest], value)
+            if list[linearTest] == value then
+                return linearTest
+            end
+        end
+
+  
+    end
+
 
 
     if result == -1 then
