@@ -56,13 +56,12 @@ function SortedList:insert(element)
     end
 
     local position = Util.BinarySearch(self._entries, element, self._compare)
-    if position == nil then
-        table.insert(self._entries, element)
-        return #self._entries
-    else
+    if position ~= nil then
         table.insert(self._entries, position, element)
         return position
     end
+    table.insert(self._entries, element)
+    return #self._entries
 end
 
 --[[

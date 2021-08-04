@@ -113,7 +113,11 @@ local function watchIndexRange(table, indexName, callback, offset, length)
         updateOffset = updateOffset,
         cancel = cancel,
         pause = function() paused = true end,
-        resume = function() paused = false end,
+        resume = function()
+             paused = false
+             watch[1]('resume')
+
+        end,
         trigger = function() watch[1]('trigger') end
     }
 end
