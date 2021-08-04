@@ -4,6 +4,7 @@
     <Script file="libs\LibLogger\LibLogger.lua"/>
     <Script file="source\Util.lua"/>
     <Script file="source\SortedList.lua"/>
+    <Script file="source\Table.lua"/>
     <Script file="source\LogEntry.lua"/>
     <Script file="source\IgnoreEntry.lua"/>
     <Script file="source\StateManager.lua"/>
