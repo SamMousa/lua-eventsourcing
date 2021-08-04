@@ -35,7 +35,15 @@ function Util.BinarySearch(list, value, comparator, min, max)
             end
         end
 
-  
+        linearTest = test
+        result = 0
+        while linearTest <= #list and result == 0 do
+            linearTest = linearTest + 1
+            result = comparator(list[linearTest], value)
+            if list[linearTest] == value then
+                return linearTest
+            end
+        end
     end
 
 

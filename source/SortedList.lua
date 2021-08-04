@@ -51,8 +51,8 @@ function SortedList:insert(element)
     self._state = self._state + 1
     -- since we expect elements to be mostly appended, we do a shortcut check.
     if (#self._entries == 0 or self._compare(self._entries[#self._entries], element) == -1) then
-        table.insert(self._entries, element)
-        return
+        self._entries[#self._entries + 1] = element
+        return #self._entries
     end
 
     local position = Util.BinarySearch(self._entries, element, self._compare)
@@ -121,21 +121,9 @@ end
 ]]
 function SortedList:remove(entry)
     local position = self:searchGreaterThanOrEqual(entry)
-    Util.DumpTable(entry)
-    print(position)
-    if position == nil or entry == self._entries[position] then
+    if position == nil or entry ~= self._entries[position] then
         error("Element to remove not found")
     end
-    self._entries[position] = nil
+    table.remove(self._entries, position)
     return position
-end
-
---[[
-    Update an element in the list, the assumption here is that the table contents have changed and thus
-    the result of the compare function might have changed too.
-]]
-function SortedList:update(entry)
-    local oldPosition = self:remove(entry)
-    local newPosition = self:insert(entry)
-    return oldPosition, newPosition
 end

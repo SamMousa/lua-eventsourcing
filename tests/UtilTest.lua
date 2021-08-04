@@ -52,7 +52,8 @@ local function TestBinarySearchDuplicates()
         { list = {{ val = 1 }, { val = 2 }, search, { val = 2 }}, search = search, expected =  3 },
         { list = {{ val = 1 }, { val = 1 }, { val = 1 }, { val = 2, a = 4 }, { val = 2, b = 6 }, search}, search = search, expected =  6 },
         { list = {{ val = 1 }, search, { val = 2 }, { val = 2 }}, search = search, expected =  2 },
-        { list = {{ val = 1 }, search, { val = 2 }, { val = 2 }, { val = 2 }, { val = 2 }, { val = 2 }, { val = 2 }}, search = search, expected =  2 }
+        { list = {{ val = 1 }, search, { val = 2 }, { val = 2 }, { val = 2 }, { val = 2 }, { val = 2 }, { val = 2 }}, search = search, expected =  2 },
+        { list = {{ val = 1 }, { val = 2 }, { val = 2 }, { val = 2 }, { val = 2 }, { val = 2 }, { val = 2 }, search}, search = search, expected =  8 }
     }
 
     for _, v in ipairs(cases) do
