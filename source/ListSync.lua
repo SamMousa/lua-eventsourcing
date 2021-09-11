@@ -441,6 +441,7 @@ function ListSync:enableSending()
         local now = Util.time()
         local firstWeek = LogEntry.weekNumber(list:head())
         local currentWeek = Util.WeekNumber(now)
+        local weeksWithData = currentWeek - firstWeek + 1
         self.logger:Debug("Announcing hashes of last %d weeks + %d rolling weeks starting at %d, first week with data is: %d", self.advertiseCount, self.advertiseCount, currentWeek - self.advertiseRollingOffset, firstWeek)
         local message = AdvertiseHashMessage.create(
             firstWeek,
@@ -458,17 +459,23 @@ function ListSync:enableSending()
         end
 
         -- historical rolling weeks
-        local weeksWithData = currentWeek - firstWeek + 1
         local rollingWeekOffsetLimit = weeksWithData - self.advertiseCount - 1
-        if rollingWeekOffsetLimit >= 0 then
+        self.logger:Debug("Weeks with data: %d, rollingWeekOffsetLimit: %d", weeksWithData, rollingWeekOffsetLimit)
+        if weeksWithData > self.advertiseCount then
+            -- most recent
             local firstHistoricalWeek = currentWeek - self.advertiseCount - self.advertiseRollingOffset
-            for checkWeek = firstHistoricalWeek, firstHistoricalWeek - self.advertiseCount + 1, -1 do
+            -- least recent
+            local lastHistoricalWeek = firstHistoricalWeek - self.advertiseCount + 1
+            for checkWeek = firstHistoricalWeek, lastHistoricalWeek,  -1 do
+                self.logger:Debug("Checking historical week %d", checkWeek)
                 if (checkWeek >= firstWeek and advertiseWeekHashInhibitorCheckOrSet(self,  checkWeek)) then
                     local hash, count = weekHash(self, checkWeek)
                     message:addHash(checkWeek, hash, count)
                     self.advertisedWeeks[checkWeek] = now + ADVERTISEMENT_TIMEOUT
                 end
+                self.advertiseRollingOffset = self.advertiseRollingOffset + 1
             end
+
             -- Reset the rolling weeks, we've reached the start of our data
             if self.advertiseRollingOffset >= rollingWeekOffsetLimit then
                 self.advertiseRollingOffset = 0
