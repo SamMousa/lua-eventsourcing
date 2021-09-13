@@ -100,7 +100,6 @@ local function restartIfRequired(stateManager)
         stateManager:restart()
     end
     return true
-    
 end
 --[[
   This function plays new entries, it is called repeatedly on a timer.
