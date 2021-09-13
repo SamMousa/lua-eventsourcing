@@ -17,6 +17,7 @@ end
 local function addRow(table, row)
     -- Add the row to each index
     local triggers = {}
+    table.rowCount = table.rowCount + 1
     for indexName, index in pairs(table.indices) do
         local position = index:insert(row)
         -- Check watches
@@ -37,7 +38,7 @@ end
 local function updateRow(table, row, mutator)
     -- Get the current location in each index
     local oldPositions = {}
-    for indexName, index in pairs(table.indices) do
+    for indexName, index in pairs(table.indices) do        
         oldPositions[indexName] = index:remove(row)
     end
     mutator()
@@ -49,7 +50,8 @@ local function updateRow(table, row, mutator)
         -- Check watches
         for _, watch in ipairs(table.watches[indexName]) do
             local callback, offset, length = unpack(watch)
-            if oldPositions[indexName] ~= newPosition and (
+            -- trigger for same spot
+            if (true or oldPositions[indexName] ~= newPosition) and (
                 (oldPositions[indexName] >= offset and oldPositions[indexName] <= offset + length)
                 or  (newPosition >= offset and newPosition <= offset + length)
             ) then
@@ -84,7 +86,7 @@ local function watchIndexRange(table, indexName, callback, offset, length)
     local paused = false
     -- We want to pass an iterator to the callback, so we curry it.
     watch[1] = function(reason)
-        return paused or callback(iterateByIndex(table, indexName, watch[2], watch[3]), reason)
+        return paused or callback(iterateByIndex(table, indexName, watch[2], watch[3]), reason, table.rowCount)
     end
     watches[#watches+1] = watch
 
@@ -128,6 +130,7 @@ Table.new = function(indices)
         -- A list of index data tables
         indices = {},
         watches = {},
+        rowCount = 0
     }
 
     for name, compare in pairs(indices) do
