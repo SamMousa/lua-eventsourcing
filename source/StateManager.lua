@@ -5,7 +5,7 @@ State manager manages (re)playing the event log to calculate state
 To work it requires a reference to a SortedList
 
 ]]--
-local StateManager, _ = LibStub:NewLibrary("EventSourcing/StateManager", 1)
+local StateManager, _ = LibStub:NewLibrary("EventSourcing/StateManager", 2)
 if not StateManager then
     return
 end
@@ -82,24 +82,36 @@ local function applyEntry(stateManager, entry, index)
     stateManager.stateCheckSum = hash
 end
 
+--[[
+    Restart the state manager, if a restart is required.
+    Will throttle (automated) restarts.
+    @return true if a restart is no longer required, false if a restart is required but was not executed due to throttling.
+]]
 local function restartIfRequired(stateManager)
     local entries = stateManager.list:entries()
     if stateManager.lastAppliedIndex > #entries
             or (stateManager.lastAppliedEntry ~= nil and entries[stateManager.lastAppliedIndex] ~= stateManager.lastAppliedEntry)
     then
         stateManager.logger:Info("Detected non-chronological list change")
+        if (GetTime() - stateManager.lastRestartTime < 5) then
+            stateManager.logger:Debug("Restart throttled")
+            return false
+        end
         stateManager:restart()
     end
+    return true
+    
 end
 --[[
   This function plays new entries, it is called repeatedly on a timer.
   The goal of each call is to remain under the frame render time
-  Current solution: apply just 1 entry
 ]]--
 local function updateState(stateManager, batchSize)
     local entries = stateManager.list:entries()
     local applied = 0
-    restartIfRequired(stateManager)
+    if restartIfRequired(stateManager) == false then
+        return
+    end
     while applied < batchSize and stateManager.lastAppliedIndex < #entries do
         local entry = entries[stateManager.lastAppliedIndex + 1]
         stateManager:castLogEntry(entry)
@@ -276,6 +288,7 @@ function StateManager:restart()
     self.logger:Info("Restarting state manager")
     self.lastAppliedIndex = 0
     self.lastAppliedEntry = nil
+    self.lastRestartTime = GetTime()
     self.stateCheckSum = 0
     self.checksumCoroutine = Util.IntegerChecksumCoroutine()
     trigger(self, EVENT.RESTART)
@@ -287,7 +300,10 @@ end
   @return int the number of entries that have not been committed to the log
 ]]--
 function StateManager:lag()
-    restartIfRequired(self)
+    if restartIfRequired(self) == false then
+        -- A restart is needed but has not been done due to throttling.
+        return #self.list:entries(), #self.uncommittedEntries
+    end
     return #self.list:entries() - self.lastAppliedIndex, #self.uncommittedEntries
 end
 
