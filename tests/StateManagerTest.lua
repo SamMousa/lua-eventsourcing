@@ -73,6 +73,7 @@ assertError(function()
 end)
 
 stateManager:catchup()
+Util.DumpTable(messages)
 assertEmpty(messages)
 sortedList:uniqueInsert(entryToIgnore)
 stateManager:catchup()

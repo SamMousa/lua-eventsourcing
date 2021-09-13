@@ -87,13 +87,13 @@ end
     Will throttle (automated) restarts.
     @return true if a restart is no longer required, false if a restart is required but was not executed due to throttling.
 ]]
-local function restartIfRequired(stateManager)
+local function restartIfRequired(stateManager, ignoreThrottle)
     local entries = stateManager.list:entries()
     if stateManager.lastAppliedIndex > #entries
             or (stateManager.lastAppliedEntry ~= nil and entries[stateManager.lastAppliedIndex] ~= stateManager.lastAppliedEntry)
     then
         stateManager.logger:Info("Detected non-chronological list change")
-        if (GetTime() - stateManager.lastRestartTime < 5) then
+        if (ignoreThrottle ~= true and GetTime() - stateManager.lastRestartTime < 5) then
             stateManager.logger:Debug("Restart throttled")
             return false
         end
@@ -108,9 +108,6 @@ end
 local function updateState(stateManager, batchSize)
     local entries = stateManager.list:entries()
     local applied = 0
-    if restartIfRequired(stateManager) == false then
-        return
-    end
     while applied < batchSize and stateManager.lastAppliedIndex < #entries do
         local entry = entries[stateManager.lastAppliedIndex + 1]
         stateManager:castLogEntry(entry)
@@ -216,7 +213,9 @@ end
 -- Applies all pending entries
 function StateManager:catchup(limit)
 
+    restartIfRequired(self, true)
     self:commitUncommittedEntries()
+    -- reset the last restart time so it will always restart if required
     local success, message = safeUpdateState(self, limit)
     if (not success) then
         if self.ticker ~= nil then
@@ -268,6 +267,9 @@ function StateManager:setUpdateInterval(interval)
         self.lastTick = t
 
         self:commitUncommittedEntries()
+        if restartIfRequired(self) == false then
+            return
+        end
         local success, message = safeUpdateState(self, self.batchSize)
         if (not success) then
             self.ticker:Cancel()
