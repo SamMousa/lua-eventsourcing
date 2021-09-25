@@ -38,7 +38,7 @@ end
 local function updateRow(table, row, mutator)
     -- Get the current location in each index
     local oldPositions = {}
-    for indexName, index in pairs(table.indices) do        
+    for indexName, index in pairs(table.indices) do
         oldPositions[indexName] = index:remove(row)
     end
     mutator()
