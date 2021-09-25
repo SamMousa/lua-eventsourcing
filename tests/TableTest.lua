@@ -62,14 +62,15 @@ assertSame(3, updateCounter)
 table.updateRow(someRow, function() 
     someRow.a = 400
 end)
-assertSame(3, updateCounter)
+assertSame(4, updateCounter)
 
 watch.pause()
 for i = 0, 10000 do
     table.addRow({a = math.random(10000)})
 end
-
+assertSame(4, updateCounter)
 watch.resume()
+assertSame(5, updateCounter)
 
 
 printResultsAndExit()
