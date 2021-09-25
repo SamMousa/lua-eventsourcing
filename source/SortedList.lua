@@ -60,7 +60,7 @@ function SortedList:insert(element)
         table.insert(self._entries, position, element)
         return position
     end
-    table.insert(self._entries, element)
+    self._entries[#self._entries + 1] = element
     return #self._entries
 end
 
