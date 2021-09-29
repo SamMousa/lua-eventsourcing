@@ -2,7 +2,7 @@
     Sorted lists with an insert API
 ]]--
 
-local SortedList, _ = LibStub:NewLibrary("EventSourcing/SortedList", 1)
+local SortedList, _ = LibStub:NewLibrary("EventSourcing/SortedList", 2)
 if not SortedList then
     return end
 
