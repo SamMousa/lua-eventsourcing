@@ -73,13 +73,13 @@ end
 function SortedList:uniqueInsert(element)
     self._state = self._state + 1
     if (#self._entries == 0 or self._compare(self._entries[#self._entries], element) == -1) then
-        table.insert(self._entries, element)
+        self._entries[#self._entries + 1] = element
         return true
     end
 
     local position = Util.BinarySearch(self._entries, element, self._compare)
     if position == nil then
-        table.insert(self._entries, element)
+        self._entries[#self._entries + 1] = element
     elseif self._compare(self._entries[position], element) ~= 0 then
         table.insert(self._entries, position, element)
     else
@@ -100,16 +100,6 @@ function SortedList:wipe()
     end
     self._state = self._state + 1
 end
--- We don't return a value since we are change the table, this makes it clear for consuming code
---function SortedList:cast(table, compare)
---    if (table._entries == nil) then
---        error("This is not a sorted list table")
---    end
---    setmetatable(table, SortedList)
---    table._compare = compare
---end
-
-
 
 function SortedList:searchGreaterThanOrEqual(entry)
     return Util.BinarySearch(self._entries, entry, self._compare)
