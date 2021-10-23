@@ -111,6 +111,7 @@ local function updateState(stateManager, batchSize)
     while applied < batchSize and stateManager.lastAppliedIndex < #entries do
         local entry = entries[stateManager.lastAppliedIndex + 1]
         stateManager:castLogEntry(entry)
+        if (stateManager.timeTraveling ~= nil and entry:time() > stateManager.timeTraveling) then break end
         -- This will throw an error if update fails, this is good since we don't want to update our tracking in that case.
         applyEntry(stateManager, entry, stateManager.lastAppliedIndex + 1)
         applied = applied + 1
@@ -151,6 +152,7 @@ function StateManager:new(list, logger)
     o.listeners = {}
     o.lastTick = 0
     o.measuredInterval = 0
+    o.timeTraveling = nil
 
     o.handleIgnoreEntry = function(entry)
         o.ignoredEntries[entry.ref] = true;
@@ -160,6 +162,10 @@ function StateManager:new(list, logger)
     return o
 end
 
+function StateManager:timeTravel(timestampOrNil)
+    self.timeTraveling = timestampOrNil
+    self:restart()
+end
 
 function StateManager:castLogEntry(table)
     -- Find which meta table we should use
@@ -172,6 +178,18 @@ end
 
 function StateManager:queueRemoteEvent(entry)
     table.insert(self.uncommittedEntries, entry)
+end
+
+
+function StateManager:addEvent(entry)
+    if self.timeTraveling ~= nil and Util.time() - entry:time() < 5  then
+        -- We're time traveling and the newly created entry was created in the last 5 seconds.
+        -- We assume it is meant to have the timeTraveled stamp.
+        entry:SetTime(self.timeTraveling)
+    end
+
+    self.list:uniqueInsert(entry)
+
 end
 
 function StateManager:createLogEntryFromList(list)

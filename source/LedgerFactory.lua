@@ -69,12 +69,15 @@ LedgerFactory.createLedger = function(table, send, registerReceiveHandler, autho
             stateManager:registerHandler(metatable, mutatorFunc)
         end,
         submitEntry = function(entry)
-            if listSync:transmitViaGuild(entry) then
-                -- only commit locally if we are authorized to send
-                sortedList:uniqueInsert(entry)
-            else
+            -- not applying timetravel before auth, because from an addon perspective it is the current time.
+            -- check authorization
+            if not authorizationHandler(entry, UnitName("player")) then
                 error("Attempted to submit entries for which you are not authorized")
+                return
             end
+
+            stateManager:addEvent(entry)
+            listSync:transmitViaGuild(entry)
         end,
         ignoreEntry = function(entry)
             local ignoreEntry = stateManager:createIgnoreEntry(entry)
