@@ -21,6 +21,7 @@ jobs:
       - name: Bigwigs packager
         uses: BigWigsMods/packager@master
         env:
+          package: LibEventSourcing
           CF_API_KEY: ${{ secrets.CURSEFORGE_TOKEN }}
           GITHUB_OAUTH: ${{ secrets.PAT_TOKEN }}
         with:
