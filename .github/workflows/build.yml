@@ -4,34 +4,15 @@ on:
     types: [published]
 jobs:
   build:
-    name: Build package
+    name: TBC
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v2
-      - name: install gitman
-        run: pipx install gitman
-      - name: install dependencies
-        run: gitman install
-      - name: Remove git dirs from gitman deps
-        run:  find libs -type d -name ".git" -execdir rm -rf {} \; -prune
-      - name: Find and Replace
-        uses: jacobtomlinson/gha-find-replace@master
+      - run: wget "${{ github.event.release.assets[0].browser_download_url }}"
+      - run: unzip LibEventSourcing.zip
+      - name: Bigwigs packager
+        uses: BigWigsMods/packager@master
+        env:
+          CF_API_KEY: ${{ secrets.CURSEFORGE_TOKEN }}
         with:
-          find: "{VERSION}"
-          include: LibEventSourcing.toc
-          replace: "${{ github.event.release.tag_name }}"
-      - run: mkdir LibEventSourcing
-      - run: mv `ls | grep -v '^LibEventSourcing$'` LibEventSourcing
-      - run: zip -r LibEventSourcing.zip LibEventSourcing -x '*.git*'
-      - name: Upload to curseforge
-        uses: itsmeow/curseforge-upload@master
-        with:
-          token: ${{ secrets.CURSEFORGE_TOKEN }}
-          project_id: 457141
-          game_endpoint: wow
-          file_path: LibEventSourcing.zip
-          changelog: See github for changes
-          display_name: LibEventSourcing
-          game_versions: 1-14-1, 2-5-2
-          release_type: release
-          #relations:
+          args: "-c -e -l -u -g bcc -r LibEventSourcing"
+
