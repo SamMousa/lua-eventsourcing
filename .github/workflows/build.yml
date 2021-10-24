@@ -3,16 +3,26 @@ on:
   release:
     types: [published]
 jobs:
-  build:
+  tbc:
     name: TBC
     runs-on: ubuntu-latest
     steps:
-      - run: wget "${{ github.event.release.assets[0].browser_download_url }}"
-      - run: unzip LibEventSourcing.zip
+      - uses: actions/checkout@v2
+      - name: install gitman
+        run: pipx install gitman
+      - run: gitman install
+      - name: Remove git dirs
+        run: find libs -type d -name ".git" -execdir rm -rf {} \; -prune
+      - run: sed -i "s/{VERSION}/${{ github.event.release.tag_name }}/g" LibEventSourcing.toc
+      - run: mkdir LibEventSourcing
+      - run: mv readme.MD LibEventSourcing/
+      - run: mv source LibEventSourcing/
+      - run: mv libs LibEventSourcing/
       - name: Bigwigs packager
         uses: BigWigsMods/packager@master
         env:
           CF_API_KEY: ${{ secrets.CURSEFORGE_TOKEN }}
+          GITHUB_OAUTH: ${{ secrets.PAT_TOKEN }}
         with:
           args: "-c -e -l -u -g bcc -r LibEventSourcing"
 
