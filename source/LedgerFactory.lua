@@ -1,6 +1,6 @@
+local name, LibEventSourcing = ...
 
-
-local LedgerFactory, _ = LibStub:NewLibrary("EventSourcing/LedgerFactory", 1)
+local LedgerFactory, _ = LibStub:NewLibrary("EventSourcing/LedgerFactory", 2)
 if not LedgerFactory then
     return
 end
@@ -30,8 +30,7 @@ Notes
 
 
 ]]--
-
-
+local stateManagers = LibEventSourcing.stateManagers
 LedgerFactory.createLedger = function(table, send, registerReceiveHandler, authorizationHandler, sendLargeMessage,
     updateInterval, batchSize, logger)
     Util.assertTable(table, 'table')
@@ -54,7 +53,11 @@ LedgerFactory.createLedger = function(table, send, registerReceiveHandler, autho
 
     stateManager:setUpdateInterval(updateInterval or 500)
     stateManager:setBatchSize(batchSize or 50)
-
+    local _, _, addon = string.find(debugstack(1, 0, 1), "@Interface\\AddOns\\(.-)\\")
+    stateManagers[#stateManagers+1] = {
+        stateManager = stateManager,
+        addon = addon
+    }
     return {
         getSortedList = function()
             return sortedList

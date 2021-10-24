@@ -5,11 +5,12 @@ State manager manages (re)playing the event log to calculate state
 To work it requires a reference to a SortedList
 
 ]]--
-local StateManager, _ = LibStub:NewLibrary("EventSourcing/StateManager", 2)
+local StateManager, _ = LibStub:NewLibrary("EventSourcing/StateManager", 3)
 if not StateManager then
     return
 end
 
+print("Loading statemanager v3")
 local Util = LibStub("EventSourcing/Util")
 local LogEntry = LibStub("EventSourcing/LogEntry")
 local IgnoreEntry = LibStub("EventSourcing/IgnoreEntry")
@@ -111,7 +112,12 @@ local function updateState(stateManager, batchSize)
     while applied < batchSize and stateManager.lastAppliedIndex < #entries do
         local entry = entries[stateManager.lastAppliedIndex + 1]
         stateManager:castLogEntry(entry)
-        if (stateManager.timeTraveling ~= nil and entry:time() > stateManager.timeTraveling) then break end
+        if (stateManager.timeTraveling ~= nil and entry:time() > stateManager.timeTraveling) then
+            if applied > 0 then
+                print(string.format("Stopping state updates due to time travel restriction, applied %d events", applied))
+            end
+            break
+        end
         -- This will throw an error if update fails, this is good since we don't want to update our tracking in that case.
         applyEntry(stateManager, entry, stateManager.lastAppliedIndex + 1)
         applied = applied + 1
@@ -162,9 +168,21 @@ function StateManager:new(list, logger)
     return o
 end
 
-function StateManager:timeTravel(timestampOrNil)
-    self.timeTraveling = timestampOrNil
-    self:restart()
+function StateManager:travelToTime(timestamp)
+
+    if self.timeTraveling == nil or self.timeTraveling > timestamp then
+        self.timeTraveling = timestamp
+        self:restart()
+    else
+        self.timeTraveling = timestamp
+    end
+end
+function StateManager:stopTimeTravel()
+    self.timeTraveling = nil
+end
+
+function StateManager:isTimeTraveling()
+    return self.timeTraveling ~= nil
 end
 
 function StateManager:castLogEntry(table)
@@ -183,9 +201,14 @@ end
 
 function StateManager:addEvent(entry)
     if self.timeTraveling ~= nil and Util.time() - entry:time() < 5  then
+        -- force catchup since we need it for the counter
+        self:catchup()
         -- We're time traveling and the newly created entry was created in the last 5 seconds.
         -- We assume it is meant to have the timeTraveled stamp.
         entry:SetTime(self.timeTraveling)
+        if self.lastAppliedEntry ~= nil then
+            entry:SetCounter(self.lastAppliedEntry:counter() + 1)
+        end
     end
 
     self.list:uniqueInsert(entry)
@@ -319,6 +342,15 @@ end
   @return int the number of entries that have not been committed to the log
 ]]--
 function StateManager:lag()
+    if self.timeTraveling ~= nil and #self.list:entries() > self.lastAppliedIndex  then
+        local nextEntry = self.list:entries()[self.lastAppliedIndex + 1]
+        self:castLogEntry(nextEntry)
+        if (nextEntry:time() > self.timeTraveling) then
+            return 0, 0
+        else
+            return 1, 0 -- this is a hack, during time travel lag will be binary
+        end
+    end
     if restartIfRequired(self) == false then
         -- A restart is needed but has not been done due to throttling.
         return #self.list:entries(), #self.uncommittedEntries
