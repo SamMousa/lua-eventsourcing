@@ -12,6 +12,8 @@ jobs:
         run: pipx install gitman
       - name: install dependencies
         run: gitman install
+      - name: Remove git dirs from gitman deps
+        run:  find libs -type d -name ".git" -execdir rm -rf {} \; -prune
       - name: Find and Replace
         uses: jacobtomlinson/gha-find-replace@master
         with:
@@ -31,5 +33,5 @@ jobs:
           changelog: See github for changes
           display_name: LibEventSourcing
           game_versions: 1-14-1, 2-5-2
-          release_type: stable
+          release_type: release
           #relations:
