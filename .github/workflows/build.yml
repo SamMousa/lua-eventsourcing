@@ -1,4 +1,4 @@
-name: Build addon archive
+name: Upload addon archive
 on:
   release:
     types: [published]
@@ -31,5 +31,5 @@ jobs:
           changelog: See github for changes
           display_name: LibEventSourcing
           game_versions: 1-14-1
-          release_type: alpha
+          release_type: stable
           #relations:
