@@ -14,15 +14,15 @@ jobs:
       - name: Remove git dirs
         run: find libs -type d -name ".git" -execdir rm -rf {} \; -prune
       - run: sed -i "s/{VERSION}/${{ github.event.release.tag_name }}/g" LibEventSourcing.toc
-      - run: mkdir LibEventSourcing
-      - run: mv readme.MD LibEventSourcing/
-      - run: mv source LibEventSourcing/
-      - run: mv libs LibEventSourcing/
+      - run: mkdir -p .release/LibEventSourcing
+      - run: mv readme.MD .release/LibEventSourcing/
+      - run: mv source .release/LibEventSourcing/
+      - run: mv libs .release/LibEventSourcing/
       - name: Bigwigs packager
         uses: BigWigsMods/packager@master
         env:
           CF_API_KEY: ${{ secrets.CURSEFORGE_TOKEN }}
           GITHUB_OAUTH: ${{ secrets.PAT_TOKEN }}
         with:
-          args: "-c -e -l -u -g bcc -r LibEventSourcing"
+          args: "-c -e -l -u -g bcc"
 
