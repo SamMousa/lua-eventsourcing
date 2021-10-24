@@ -24,5 +24,5 @@ jobs:
           CF_API_KEY: ${{ secrets.CURSEFORGE_TOKEN }}
           GITHUB_OAUTH: ${{ secrets.PAT_TOKEN }}
         with:
-          args: "-c -e -u -g bcc"
+          args: "-o -e -u -g bcc"
 
