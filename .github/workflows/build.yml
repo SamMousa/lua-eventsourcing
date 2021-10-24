@@ -30,6 +30,6 @@ jobs:
           file_path: LibEventSourcing.zip
           changelog: See github for changes
           display_name: LibEventSourcing
-          game_versions: 1-14-1
+          game_versions: 1-14-1, 2-5-2
           release_type: stable
           #relations:
