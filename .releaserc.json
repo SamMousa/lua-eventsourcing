@@ -9,6 +9,9 @@
       "assets": [
         {"path": "LibEventSourcing.zip", "label": "Addon package"}
       ]
+    }],
+    ["@semantic-release/exec", {
+      "prepareCmd": "./prepare.sh ${nextRelease.version}"
     }]
   ]
 }
