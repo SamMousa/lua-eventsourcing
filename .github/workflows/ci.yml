@@ -33,16 +33,6 @@ jobs:
       - uses: actions/checkout@v2
       - name: install gitman
         run: pipx install gitman
-      - name: install dependencies
-        run: gitman install
-      - run: mkdir LibEventSourcing
-      - run: mv LibEventSourcing.* LibEventSourcing/
-      - run: mv readme.MD LibEventSourcing/
-      - run: mv source LibEventSourcing/
-      - run: mv libs LibEventSourcing/
-      - run: ls -lahr LibEventSourcing
-      - run: zip -r LibEventSourcing.zip LibEventSourcing
-
       - uses: actions/setup-node@v1
         with:
           node-version: '14.x'
