@@ -18,7 +18,8 @@ jobs:
       - run: mv readme.MD .release/LibEventSourcing/
       - run: mv source .release/LibEventSourcing/
       - run: mv libs .release/LibEventSourcing/
-      - run: mv LibEventSourcing.toc .release/LibEventSourcing/
+      # This is copied so the packager can still read it in its original location
+      - run: cp LibEventSourcing.toc .release/LibEventSourcing/
       - run: mv LibEventSourcing.xml .release/LibEventSourcing/
       - name: Bigwigs packager
         uses: BigWigsMods/packager@master
