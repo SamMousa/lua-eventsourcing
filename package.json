@@ -3,15 +3,11 @@
   "description": "N/A",
   "private": true,
   "devDependencies": {
-    "@commitlint/config-conventional": "^13",
-    "commitlint": "^13",
-    "conventional-changelog-conventionalcommits": "^4",
-    "husky": "^6",
-    "@semantic-release/exec": "^6",
-    "semantic-release": "^18"
+    "@semantic-release/exec": "^6.0.2",
+    "husky": "^6.0.0",
+    "@commitlint/config-conventional": "^14.1.0"
   },
   "scripts": {
-    "prepare": "husky install",
-    "test": "./runtests.sh"
+    "prepare": "husky install"
   }
 }
