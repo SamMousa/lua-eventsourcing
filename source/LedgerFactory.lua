@@ -1,6 +1,6 @@
+local _, LibEventSourcing = ...
 
-
-local LedgerFactory, _ = LibStub:NewLibrary("EventSourcing/LedgerFactory", 1)
+local LedgerFactory, _ = LibStub:NewLibrary("EventSourcing/LedgerFactory", 2)
 if not LedgerFactory then
     return
 end
@@ -30,8 +30,7 @@ Notes
 
 
 ]]--
-
-
+local stateManagers = LibEventSourcing.stateManagers
 LedgerFactory.createLedger = function(table, send, registerReceiveHandler, authorizationHandler, sendLargeMessage,
     updateInterval, batchSize, logger)
     Util.assertTable(table, 'table')
@@ -54,7 +53,11 @@ LedgerFactory.createLedger = function(table, send, registerReceiveHandler, autho
 
     stateManager:setUpdateInterval(updateInterval or 500)
     stateManager:setBatchSize(batchSize or 50)
-
+    local _, _, addon = string.find(debugstack(1, 0, 1), "@Interface\\AddOns\\(.-)\\")
+    stateManagers[#stateManagers+1] = {
+        stateManager = stateManager,
+        addon = addon
+    }
     return {
         getSortedList = function()
             return sortedList
@@ -69,12 +72,15 @@ LedgerFactory.createLedger = function(table, send, registerReceiveHandler, autho
             stateManager:registerHandler(metatable, mutatorFunc)
         end,
         submitEntry = function(entry)
-            if listSync:transmitViaGuild(entry) then
-                -- only commit locally if we are authorized to send
-                sortedList:uniqueInsert(entry)
-            else
+            -- not applying timetravel before auth, because from an addon perspective it is the current time.
+            -- check authorization
+            if not authorizationHandler(entry, UnitName("player")) then
                 error("Attempted to submit entries for which you are not authorized")
+                return
             end
+
+            stateManager:addEvent(entry)
+            listSync:transmitViaGuild(entry)
         end,
         ignoreEntry = function(entry)
             local ignoreEntry = stateManager:createIgnoreEntry(entry)

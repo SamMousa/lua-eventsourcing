@@ -2,7 +2,9 @@
 ..\FrameXML\UI.xsd">
     <Script file="libs\LibStub\LibStub.lua"/>
     <Script file="libs\LibLogger\LibLogger.lua"/>
+    <Include file="libs\ChatOps\ChatOps.xml"/>
     <Script file="source\Util.lua"/>
+    <Script file="source\SlashCommands.lua"/>
     <Script file="source\SortedList.lua"/>
     <Script file="source\LogEntry.lua"/>
     <Script file="source\IgnoreEntry.lua"/>
