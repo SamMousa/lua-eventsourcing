@@ -205,7 +205,7 @@ function StateManager:addEvent(entry)
         self:catchup()
         -- We're time traveling and the newly created entry was created in the last 5 seconds.
         -- We assume it is meant to have the timeTraveled stamp.
-        entry:SetTime(self.timeTraveling)
+        entry:setTime(self.timeTraveling)
         if self.lastAppliedEntry ~= nil then
             entry:SetCounter(self.lastAppliedEntry:counter() + 1)
         end
