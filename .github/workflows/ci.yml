@@ -40,6 +40,9 @@ jobs:
         id: semantic
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      # fetch tags so release script realizes we're safe to release
+      - run: git fetch --tags
+        if: steps.semantic.outputs.new_release_published == 'true'
       - name: Curseforge TBC
         if: steps.semantic.outputs.new_release_published == 'true'
         uses: BigWigsMods/packager@master
