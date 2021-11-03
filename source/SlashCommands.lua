@@ -1,4 +1,4 @@
-local name, LibEventSourcing = ...
+local _, LibEventSourcing = ...
 --[[
  Contains a list of tables. Each table in the list has:
   - addon: string --name of the addon that created the statemanager
@@ -74,9 +74,6 @@ local function printHelp(print)
         local stateManager = v.stateManager
         if type(stateManager.isTimeTraveling) == 'function' then
             local linkText  = string.format("State Manager %d", i)
-            local prefill = string.format("/timetravel %d travel ", i)
-
-            -- local link = createAutoCompleteLink(linkText, prefill)
             local link = createCallbackLink(linkText, function()
                 printDetails(print, i)
             end)
@@ -110,13 +107,12 @@ local function parsePattern(buffer, pattern)
     if (start == nil) then
         return nil, buffer
     end
-    buffer = string.sub(buffer, offset + 1)
-
-    return n, buffer
+    return n, string.sub(buffer, offset + 1)
 end
+
 local function parseNumber(buffer)
-    local n, buffer = parsePattern(buffer, "^%s*(%d+)")
-    return tonumber(n), buffer
+    local n, newBuffer = parsePattern(buffer, "^%s*(%d+)")
+    return tonumber(n), newBuffer
 end
 
 local function parseStop(buffer)
@@ -128,9 +124,9 @@ end
 
 local function parseAny(buffer, ...)
     for _, parser in ipairs({...}) do
-        local result, buffer = parser(buffer)
+        local result, newBuffer = parser(buffer)
         if result ~= nil then
-            return result, buffer
+            return result, newBuffer
         end
     end
     return nil, buffer
@@ -145,16 +141,18 @@ end
 
 local function handleTimeTravelCommand(msg, source)
     local pprint = printer(source, "ffff0000")
-    local params = {}
 
     -- parse the message.
     local buffer = msg
-    local stateManagerIndex, buffer = parseNumber(buffer)
+    local stateManagerIndex
+    local command
+
+    stateManagerIndex, buffer = parseNumber(buffer)
 
     if (stateManagerIndex == nil) then
         return printHelp(pprint)
     end
-    local command, buffer = parseCommand(buffer)
+    command, buffer = parseCommand(buffer)
     if command == 'stop' then
         return stopTimeTravel(pprint, stateManagerIndex)
     end
