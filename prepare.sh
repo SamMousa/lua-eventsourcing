@@ -15,4 +15,7 @@ mkdir LibEventSourcing
 mv readme.MD LibEventSourcing/
 mv source LibEventSourcing/
 mv libs LibEventSourcing/
+mv *.toc LibEventSourcing/
+mv *.xml LibEventSourcing/
+mv readme.MD LibEventSourcing/
 zip -r LibEventSourcing.zip LibEventSourcing
