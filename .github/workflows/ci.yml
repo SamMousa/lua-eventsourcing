@@ -40,3 +40,21 @@ jobs:
         id: semantic
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      - name: Curseforge TBC
+        if: steps.semantic.outputs.new_release_published == 'true'
+        uses: BigWigsMods/packager@master
+        env:
+          package: LibEventSourcing
+          CF_API_KEY: ${{ secrets.CURSEFORGE_TOKEN }}
+          GITHUB_OAUTH: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          args: "-c -o -e -u -g bcc -r ."
+      - name: Curseforge Classic
+        if: steps.semantic.outputs.new_release_published == 'true'
+        uses: BigWigsMods/packager@master
+        env:
+          package: LibEventSourcing
+          CF_API_KEY: ${{ secrets.CURSEFORGE_TOKEN }}
+          GITHUB_OAUTH: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          args: "-c -o -e -u -g classic -r ."

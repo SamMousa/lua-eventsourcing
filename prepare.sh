@@ -19,6 +19,7 @@ mkdir LibEventSourcing
 mv readme.MD LibEventSourcing/
 mv source LibEventSourcing/
 mv libs LibEventSourcing/
-mv *.toc LibEventSourcing/
+# this is copied so bigwigs packager can still access it
+cp *.toc LibEventSourcing/
 mv *.xml LibEventSourcing/
 zip -r LibEventSourcing.zip LibEventSourcing
