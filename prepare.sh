@@ -1,7 +1,13 @@
 #!/bin/sh
 
+# exit when any command fails
+set -e
+
 sed -i "s/{VERSION}/$1/g" LibEventSourcing.toc
+
+
 # add deps
+pipx install gitman
 gitman install
 # Remove git dirs
 find libs -type d -name ".git" -execdir rm -rf {} \; -prune
