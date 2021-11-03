@@ -10,6 +10,9 @@ C_Timer = {
     tickers = {}
 }
 
+SlashCmdList = {}
+ItemRefTooltip = {}
+
 local tickers = C_Timer.tickers
 
 function C_Timer.Tick()

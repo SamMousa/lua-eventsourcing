@@ -1,10 +1,28 @@
 require "tests/_wowstubs"
 
-for line in io.lines('LibEventSourcing.xml') do
-    for file in string.gmatch(line, 'Script file="(.+)\.lua"') do
-        require(file:gsub('\\', '/'))
+local addonName = "DoesNotMatter"
+local addonTable = {}
+
+local function parseXml(xmlFile, prefix)
+    prefix = prefix or ''
+    for line in io.lines(xmlFile) do
+        for file in string.gmatch(line, 'Script file="(.+\.lua)"') do
+            local search = prefix .. file:gsub('\\', '/');
+            print(search)
+            loadfile(search, "bt", {})(addonName, addonTable)
+        end
+        for file in string.gmatch(line, 'Include file="(.+\.xml)"') do
+            local xmlFile = prefix .. file:gsub('\\', '/');
+            print(xmlFile)
+            -- get the new prefix
+            local newPrefix = string.match(xmlFile, "(.*/).*")
+            print("new prefix", newPrefix)
+            parseXml(xmlFile, newPrefix)
+        end
     end
 end
+
+parseXml('LibEventSourcing.xml')
 math.randomseed(os.time())
 
 local Util = LibStub("EventSourcing/Util")

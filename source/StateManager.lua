@@ -10,7 +10,6 @@ if not StateManager then
     return
 end
 
-print("Loading statemanager v3")
 local Util = LibStub("EventSourcing/Util")
 local LogEntry = LibStub("EventSourcing/LogEntry")
 local IgnoreEntry = LibStub("EventSourcing/IgnoreEntry")

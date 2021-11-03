@@ -8,18 +8,19 @@ local name, LibEventSourcing = ...
 ]]--
 LibEventSourcing.stateManagers = {}
 local stateManagers = LibEventSourcing.stateManagers
+
+local ChatOps = LibStub("ChatOps")
+
 SLASH_LibEventSourcing_TimeTravel1 = "/timetravel"
 
 local function createAutoCompleteLink(linkText, prefill, color)
     color = color or "ffff4500"
-    return string.format("|c%s|HAutoComplete:%s|h[%s]|h|r", color, prefill, linkText)
+    return ChatOps.createAutoCompleteLink(ChatOps.colorize(linkText, color), prefill)
 end
 
-local callbackLinks = {}
 local function createCallbackLink(linkText, callback, color)
     color = color or "ffff4500"
-    callbackLinks[#callbackLinks+1] = callback
-    return string.format("|c%s|HCallback:%s|h[%s]|h|r", color, #callbackLinks, linkText)
+    return ChatOps.createCallbackLink(ChatOps.colorize(linkText, color), callback)
 end
 
 local function printer(editBox, argb)
@@ -37,7 +38,7 @@ local function printer(editBox, argb)
     end
 end
 
-local function printDetails(print, index)
+local function printDetails(print, index, offset)
     local addon = stateManagers[index].addon
     local stateManager = stateManagers[index].stateManager
     print(string.format("Details for statemanager %d from addon %s", index, addon))
@@ -52,11 +53,15 @@ local function printDetails(print, index)
     end
 
     print("Here is a list of timestamps of the past few weeks:")
-    for i = 0, 5 do
-        local timestamp = GetServerTime() - 7 * 24 * 3600 * i
+    offset = offset or 0
+    for i = 0, 4 do
+        local timestamp = GetServerTime() - 7 * 24 * 3600 * (i + offset)
         local link = createAutoCompleteLink(timestamp, string.format("/timetravel %d travel %d", index, timestamp))
         print(string.format("%s %s", link, date(nil, timestamp)))
     end
+    print(createCallbackLink('<< Go back further', function()
+        printDetails(print, index, offset + 5)
+    end))
     print("Pick a timestamp to travel back to or use stop to stop traveling", string.format("/timetravel %d travel ", index))
 
 end
@@ -166,27 +171,3 @@ local function handleTimeTravelCommand(msg, source)
 
 end
 SlashCmdList["LibEventSourcing_TimeTravel"] = handleTimeTravelCommand
-
---[[
-    Tooltip && hyperlink hooking.
-    ]]
-
-local prevSetHyperlink = ItemRefTooltip.SetHyperlink
-ItemRefTooltip.SetHyperlink = function(self, link, ...)
-    if string.match(link, "^AutoComplete:.*") then
-        local editBox = SELECTED_CHAT_FRAME.editBox
-            editBox:Show()
-            editBox:SetText(string.match(link, "^AutoComplete:(.*)$"))
-            editBox:SetFocus()
-        return
-    end
-    if string.match(link, "^Callback:.*") then
-        local callback = callbackLinks[tonumber(string.match(link, "^Callback:(.*)"))]
-        callback()
-        return
-    end
-    return prevSetHyperlink(self, link, ...)
-end
---[[
-    Hook the chat frames
-]]
