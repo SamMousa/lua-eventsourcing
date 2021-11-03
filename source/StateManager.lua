@@ -207,7 +207,7 @@ function StateManager:addEvent(entry)
         -- We assume it is meant to have the timeTraveled stamp.
         entry:setTime(self.timeTraveling)
         if self.lastAppliedEntry ~= nil then
-            entry:SetCounter(self.lastAppliedEntry:counter() + 1)
+            entry:setCounter(self.lastAppliedEntry:counter() + 1)
         end
     end
 
