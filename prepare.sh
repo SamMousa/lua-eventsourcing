@@ -5,8 +5,12 @@ set -e
 
 sed -i "s/{VERSION}/$1/g" LibEventSourcing.toc
 
+# hide git crying about master branch
+git config --global init.defaultBranch master
 
 # add deps
+
+
 pipx install gitman
 gitman install
 # Remove git dirs
@@ -17,5 +21,4 @@ mv source LibEventSourcing/
 mv libs LibEventSourcing/
 mv *.toc LibEventSourcing/
 mv *.xml LibEventSourcing/
-mv readme.MD LibEventSourcing/
 zip -r LibEventSourcing.zip LibEventSourcing
