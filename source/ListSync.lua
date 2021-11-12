@@ -233,8 +233,9 @@ local function handleRequestWeekMessage(message, sender, distribution, stateMana
         requestWeekInhibitorSet(listSync, message.week)
     elseif distribution == CHANNEL_GUILD and listSync:isSendingEnabled() then
         if (listSync.advertisedWeeks[message.week] ~= nil) then
-            listSync.logger:Info("Received request for week %d from %s, will attempt send in 5s", message.week, sender)
-            C_Timer.After(5, function()
+            local delay = 3 + 5 * math.random();
+            listSync.logger:Info("Received request for week %d from %s, will attempt send in %.2fs", message.week, sender, delay)
+            C_Timer.After(delay, function()
                 -- check advertisements after delay, someone might have advertised after us and still gained priority
                 if listSync.advertisedWeeks[message.week] ~= nil and listSync.advertisedWeeks[message.week] > Util.time() then
                     -- Remove our advertisement for this week, this prevents multiple requests leading to multiple sends
@@ -243,9 +244,8 @@ local function handleRequestWeekMessage(message, sender, distribution, stateMana
                 end
             end)
         else
-            listSync.logger:Info("Ignoring request for week %d from %s, we did not advertise", message.week, sender)
+            listSync.logger:Info("Ignoring request for week %d from %s, we did not advertise or lost prio on", message.week, sender)
         end
-
     elseif distribution == CHANNEL_WHISPER then
         listSync:weekSyncViaWhisper(sender, message.week)
     end
@@ -315,7 +315,7 @@ function ListSync:new(stateManager, sendMessage, registerReceiveHandler, authori
 
     o.listeners = {}
     o.advertiseTicker = nil
-    o.advertiseCount = 4
+    o.advertiseCount = 8
     o.advertiseRollingOffset = 0
     o.send = sendMessage
     o.sendLargeMessage = sendLargeMessage or sendMessage
