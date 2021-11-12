@@ -2,7 +2,7 @@
     Sync lists in lua
 ]]--
 
-local ListSync, _ = LibStub:NewLibrary("EventSourcing/ListSync", 1)
+local ListSync, _ = LibStub:NewLibrary("EventSourcing/ListSync", 2)
 if not ListSync then
 return end
 
@@ -477,7 +477,7 @@ function ListSync:enableSending()
             end
 
             -- Reset the rolling weeks, we've reached the start of our data
-            if self.advertiseRollingOffset >= rollingWeekOffsetLimit then
+            if self.advertiseRollingOffset > rollingWeekOffsetLimit then
                 self.advertiseRollingOffset = 0
             end
         end
