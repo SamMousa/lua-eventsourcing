@@ -46,9 +46,11 @@ local function entryToList(entry)
 end
 
 local function applyEntry(stateManager, entry, index)
-    if type(stateManager.handlers[entry:class()]) ~= 'function' then
-        error("Callback for class " .. entry:class() .. "is not a function")
+    local handler = stateManager.handlers[entry:class()] or stateManager.defaultHandler
+    if handler == nil then
+        error("Handler for class " .. entry:class() .. "is not registered and no default handler was set")
     end
+
     local result, hash
 
     --[[ Check ignored entries ]]--
@@ -58,7 +60,7 @@ local function applyEntry(stateManager, entry, index)
     if (stateManager.ignoredEntries[uuid] ~= nil) then
         stateManager.ignoredEntries[uuid] = nil
     else
-        stateManager.handlers[entry:class()](entry)
+        handler(entry)
     end
 
     --[[
@@ -157,6 +159,7 @@ function StateManager:new(list, logger)
     o.listeners = {}
     o.lastTick = 0
     o.measuredInterval = 0
+    o.defaultHandler = nil
     o.timeTraveling = nil
 
     o.handleIgnoreEntry = function(entry)
@@ -245,9 +248,15 @@ end
 
 
 function StateManager:registerHandler(eventType, handler)
+    Util.assertFunction(handler, 'handler')
     local class = LogEntry.staticClassName(eventType)
     self.handlers[class] = handler
     self.metatables[class] = eventType
+end
+
+function StateManager:setDefaultHandler(handler)
+    Util.assertFunction(handler, 'handler')
+    self.defaultHandler = handler
 end
 
 -- Applies all pending entries
