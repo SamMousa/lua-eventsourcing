@@ -71,6 +71,9 @@ LedgerFactory.createLedger = function(table, send, registerReceiveHandler, autho
         registerMutator = function(metatable, mutatorFunc)
             stateManager:registerHandler(metatable, mutatorFunc)
         end,
+        setDefaultHandler = function(handler)
+            stateManager:setDefaultHandler(handler)
+        end,
         submitEntry = function(entry)
             -- not applying timetravel before auth, because from an addon perspective it is the current time.
             -- check authorization
