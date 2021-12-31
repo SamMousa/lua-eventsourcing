@@ -11,6 +11,7 @@
     <Script file="source\StateManager.lua"/>
     <Script file="source\Message.lua"/>
     <Script file="source\AdvertiseHashMessage.lua"/>
+    <Script file="source\SubscribeMessage.lua"/>
     <Script file="source\WeekDataMessage.lua"/>
     <Script file="source\BulkDataMessage.lua"/>
     <Script file="source\RequestWeekMessage.lua"/>

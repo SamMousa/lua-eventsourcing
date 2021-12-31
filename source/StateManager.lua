@@ -45,21 +45,33 @@ local function entryToList(entry)
     return result
 end
 
+
+local function castLogEntry(stateManager, entry)
+    -- Find which meta table we should use
+    local class = LogEntry.class(entry)
+    if stateManager.metatables[class] == nil then
+            error("Unknown class: " .. class)
+    end
+    setmetatable(entry, stateManager.metatables[class])
+end
+
+
 local function applyEntry(stateManager, entry, index)
-    local handler = stateManager.handlers[entry:class()] or stateManager.defaultHandler
+    local handler = stateManager.handlers[LogEntry.class(entry)] or stateManager.defaultHandler
     if handler == nil then
-        error("Handler for class " .. entry:class() .. "is not registered and no default handler was set")
+        error(string.format("Handler for class %s is not registered and no default handler was set", LogEntry.class(entry)))
     end
 
     local result, hash
 
     --[[ Check ignored entries ]]--
-    local uuid = entry:uuid();
+    local uuid = LogEntry.uuid(entry);
     local numbersForHash = LogEntry.numbersForHash(entry);
 
     if (stateManager.ignoredEntries[uuid] ~= nil) then
         stateManager.ignoredEntries[uuid] = nil
     else
+        castLogEntry(stateManager, entry)
         handler(entry)
     end
 
@@ -103,6 +115,7 @@ local function restartIfRequired(stateManager, ignoreThrottle)
     end
     return true
 end
+
 --[[
   This function plays new entries, it is called repeatedly on a timer.
   The goal of each call is to remain under the frame render time
@@ -112,7 +125,6 @@ local function updateState(stateManager, batchSize)
     local applied = 0
     while applied < batchSize and stateManager.lastAppliedIndex < #entries do
         local entry = entries[stateManager.lastAppliedIndex + 1]
-        stateManager:castLogEntry(entry)
         if (stateManager.timeTraveling ~= nil and entry:time() > stateManager.timeTraveling) then
             if applied > 0 then
                 print(string.format("Stopping state updates due to time travel restriction, applied %d events", applied))
@@ -138,6 +150,17 @@ local function safeUpdateState(stateManager, limit)
     stateManager.updatingState = false
     return success, message
 end
+
+local function createLogEntryFromClass(stateManager, cls)
+    local table = {}
+    if stateManager.metatables[cls] == nil then
+        error("Unknown class: " .. cls)
+    end
+    setmetatable(table, stateManager.metatables[cls])
+    LogEntry.setClass(table, cls)
+    return table
+end
+
 
 -- END PRIVATE
 
@@ -187,15 +210,6 @@ function StateManager:isTimeTraveling()
     return self.timeTraveling ~= nil
 end
 
-function StateManager:castLogEntry(table)
-    -- Find which meta table we should use
-    local class = LogEntry.class(table)
-    if self.metatables[class] == nil then
-        error("Unknown class: " .. class)
-    end
-    setmetatable(table, self.metatables[class])
-end
-
 function StateManager:queueRemoteEvent(entry)
     table.insert(self.uncommittedEntries, entry)
 end
@@ -220,31 +234,22 @@ end
 function StateManager:createLogEntryFromList(list)
     if list.cls ~= nil then
         -- this is not really a list
-        self:castLogEntry(list)
+        castLogEntry(self, list)
         return list
     end
     local class = table.remove(list)
-    local entry = self:createLogEntryFromClass(class)
+    local entry = createLogEntryFromClass(self, class)
     hydrateEntryFromList(entry, list)
     return entry
 end
 
 function StateManager:createListFromEntry(entry)
-    self:castLogEntry(entry)
+    castLogEntry(self, entry)
     local result = entryToList(entry)
-    table.insert(result, entry:class())
+    table.insert(result, LogEntry.class(entry))
     return result
 end
 
-function StateManager:createLogEntryFromClass(cls)
-    local table = {}
-    if self.metatables[cls] == nil then
-        error("Unknown class: " .. cls)
-    end
-    setmetatable(table, self.metatables[cls])
-    LogEntry.setClass(table, cls)
-    return table
-end
 
 
 function StateManager:registerHandler(eventType, handler)
@@ -352,8 +357,7 @@ end
 function StateManager:lag()
     if self.timeTraveling ~= nil and #self.list:entries() > self.lastAppliedIndex  then
         local nextEntry = self.list:entries()[self.lastAppliedIndex + 1]
-        self:castLogEntry(nextEntry)
-        if (nextEntry:time() > self.timeTraveling) then
+        if (LogEntry.time(nextEntry) > self.timeTraveling) then
             return 0, 0
         else
             return 1, 0 -- this is a hack, during time travel lag will be binary

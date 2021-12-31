@@ -15,6 +15,7 @@ local RequestWeekMessage = LibStub("EventSourcing/Message/RequestWeek")
 local RequestStateMessage = LibStub("EventSourcing/Message/RequestState")
 local StateMessage = LibStub("EventSourcing/Message/State")
 local BulkDataMessage = LibStub("EventSourcing/Message/BulkData")
+local SubscribeMessage = LibStub("EventSourcing/Message/Subscribe")
 local Message = LibStub("EventSourcing/Message")
 
 
@@ -146,7 +147,12 @@ local function requestWeekInhibitorCheck(listSync, week)
             or listSync.inhibitors[messageType][week] < Util.time()
 end
 
-local function handleAdvertiseMessage(message, sender, distribution, stateManager, listSync)
+local function handleSubscribeMessage(message, sender, distribution, stateManager, listSync)
+    -- This message should only be received on a whisper channel.
+    listSync.subscribers[#listSync.subscribers + 1] = sender
+end
+
+local function handleAdvertiseMessage(message, sender, _, stateManager, listSync)
     -- This is the number of entries we expect to have after all data from advertisements in this message have been synced
     local projectedEntries = stateManager:getSortedList():length()
     local now = Util.time()
@@ -196,33 +202,33 @@ end
 
 
 local function handleWeekDataMessage(message, sender, distribution, stateManager, listSync)
-    local count = 0
-    for _, v in ipairs(message.entries) do
-        local entry = stateManager:createLogEntryFromList(v)
-        -- Authorize each event
-        if listSync.authorizationHandler(entry, sender) then
+    if not listSync.authorizationHandler(sender) then
+        listSync.logger:Warning("Dropping week data message from unauthorized sender %s", sender)
+    else
+        local count = 0
+        for _, v in ipairs(message.entries) do
+            local entry = stateManager:createLogEntryFromList(v)
             stateManager:queueRemoteEvent(entry)
             count = count + 1
-        else
-            listSync.logger:Warning("Dropping event from unauthorized sender %s", sender)
         end
+        listSync.logger:Info("Enqueued %d events for week %s from remote received from %s via %s", count, message.week, sender, distribution)
     end
-    listSync.logger:Info("Enqueued %d events for week %s from remote received from %s via %s", count, message.week, sender, distribution)
 end
 
+
 local function handleBulkDataMessage(message, sender, distribution, stateManager, listSync)
-    local count = 0
-    for _, v in ipairs(message.entries) do
-        local entry = stateManager:createLogEntryFromList(v)
-        -- Authorize each event
-        if listSync.authorizationHandler(entry, sender) then
+
+    if not listSync.authorizationHandler(sender) then
+        listSync.logger:Warning("Dropping bulk data message from unauthorized sender %s", sender)
+    else
+        local count = 0
+        for _, v in ipairs(message.entries) do
+            local entry = stateManager:createLogEntryFromList(v)
             stateManager:queueRemoteEvent(entry)
             count = count + 1
-        else
-            listSync.logger:Warning("Dropping event from unauthorized sender %s", sender)
         end
+        listSync.logger:Info("Enqueued %d events from remote received from %s via %s", count, sender, distribution)
     end
-    listSync.logger:Info("Enqueued %d events from remote received from %s via %s", count, sender, distribution)
 end
 
 local function handleRequestWeekMessage(message, sender, distribution, stateManager, listSync)
@@ -289,14 +295,10 @@ local function advertiseWeekHashInhibitorCheckOrSet(listSync, week)
     return false
 end
 
-local function transmitEntry(listSync, entry, authEntry, channel)
-    if listSync.authorizationHandler(authEntry or entry, UnitName("player")) then
-        local message = BulkDataMessage.create()
-        message:addEntry(listSync._stateManager:createListFromEntry(entry))
-        send(listSync, message, channel)
-        return true
-    end
-    return false
+local function transmitEntry(listSync, entry, channel)
+    local message = BulkDataMessage.create()
+    message:addEntry(listSync._stateManager:createListFromEntry(entry))
+    send(listSync, message, channel)
 end
 
 function ListSync:new(stateManager, sendMessage, registerReceiveHandler, authorizationHandler, sendLargeMessage, logger)
@@ -327,6 +329,9 @@ function ListSync:new(stateManager, sendMessage, registerReceiveHandler, authori
         entries = {}
     }
     o.playerName = UnitName("player")
+    -- A list of players that want our advertisements
+    o.subscribers = {}
+
     registerReceiveHandler(function(message, distribution, sender)
         handleMessage(o, message, distribution, sender)
     end)
@@ -338,6 +343,7 @@ function ListSync:new(stateManager, sendMessage, registerReceiveHandler, authori
     o.messageHandlers[RequestWeekMessage.type()] = { handleRequestWeekMessage }
     o.messageHandlers[RequestStateMessage.type()] = { handleRequestStateMessage }
     o.messageHandlers[StateMessage.type()] = { handleStateMessage }
+    o.messageHandlers[SubscribeMessage.type()] = { handleSubscribeMessage }
     o.inhibitors = {}
     -- Inhibitor for sending hash advertisements, format is week => timestamp inhibition ends
     o.inhibitors[AdvertiseHashMessage.type()] = {}
@@ -373,17 +379,14 @@ end
 
 --[[
     Sends an entry out over the guild channel, if allowed
-    @param LogEntry authEntry, the entry to use for auth checking, defaults to the entry that is to be transmitted
-    @return bool whether we were authorized to send the message
-
 ]]--
 
-function ListSync:transmitViaGuild(entry, authEntry)
-    return transmitEntry(self, entry, authEntry, CHANNEL_GUILD)
+function ListSync:transmitViaGuild(entry)
+    return transmitEntry(self, entry, CHANNEL_GUILD)
 end
 
-function ListSync:transmitViaRaid(entry, authEntry)
-    return transmitEntry(self, entry, authEntry, CHANNEL_RAID)
+function ListSync:transmitViaRaid(entry)
+    return transmitEntry(self, entry, CHANNEL_RAID)
 end
 
 

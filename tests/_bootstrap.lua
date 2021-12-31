@@ -57,9 +57,13 @@ function assertEmpty(table)
     assertCount(0, table)
 end
 
+function assertTable(table) 
+    return assert(type(table) =="table")
+end
 function assertCount(expected, table)
+    assertTable(table)
     assertionStatistics["total"] = assertionStatistics["total"] + 1
-    assert(#table == expected, string.format("failed assert that table has length %d", expected))
+    assert(#table == expected, string.format("failed assert that table has length %d, got %d", expected, #table))
     assertionStatistics["passed"] = assertionStatistics["passed"] + 1
 end
 function assertError(cb)

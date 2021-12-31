@@ -36,7 +36,7 @@ assertTrue(type(StateManager) == 'table')
 assertSame(0, stateManager:stateHash())
 assertEmpty(messages)
 
-sortedList:uniqueInsert(TestEntry:new('test'))
+assertTrue(sortedList:uniqueInsert(TestEntry:new('test')))
 assertSame(1, sortedList:length())
 stateManager:catchup()
 assertCount(1, messages)

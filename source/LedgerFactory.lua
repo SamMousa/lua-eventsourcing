@@ -16,8 +16,7 @@ Params
   table: table -- Reference to the data, should be a saved variable
   send: function(tableData, distribution, target, progressCallback): void -- function the sync will use to send outgoing data
   sendLargeMessage: function(tableData, distribution, target, progressCallback): void -- function the sync will use to send large messages
-  authorizationHandler: function(entry, sender): bool -- Authorization handler, called before sending outgoing entries and before
-  committing incoming entries
+  authorizationHandler: function(sender): bool -- Authorization handler, called before sending outgoing entries and before trusting incoming entries
 
   registerReceiveHandler: function(receiveCallback: function(message, distribution, sender)): void
 
@@ -77,22 +76,13 @@ LedgerFactory.createLedger = function(table, send, registerReceiveHandler, autho
         submitEntry = function(entry)
             -- not applying timetravel before auth, because from an addon perspective it is the current time.
             -- check authorization
-            if not authorizationHandler(entry, UnitName("player")) then
-                error("Attempted to submit entries for which you are not authorized")
-                return
-            end
-
             stateManager:addEvent(entry)
             listSync:transmitViaGuild(entry)
         end,
         ignoreEntry = function(entry)
             local ignoreEntry = stateManager:createIgnoreEntry(entry)
-            if listSync:transmitViaGuild(ignoreEntry, entry) then
-                -- only commit locally if we are authorized to send
-                sortedList:uniqueInsert(ignoreEntry)
-            else
-                error("Attempted to submit entries for which you are not authorized")
-            end
+            sortedList:uniqueInsert(ignoreEntry)
+            listSync:transmitViaGuild(ignoreEntry)
         end,
         catchup = function(limit)
             stateManager:catchup(limit)
