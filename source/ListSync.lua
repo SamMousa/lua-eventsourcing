@@ -78,7 +78,6 @@ local function weekEntryIterator(listSync, week)
     search:setCounter(-1 * math.huge)
 
     local position = sortedList:searchGreaterThanOrEqual(search)
-    local stateManager = listSync._stateManager
     local entries = sortedList:entries()
 
     return function()
@@ -86,9 +85,8 @@ local function weekEntryIterator(listSync, week)
         while position ~= nil and position <= #entries do
             -- luacheck: pop ignore
             local entry = entries[position]
-            stateManager:castLogEntry(entry)
             position = position + 1
-            if entry:weekNumber() == week then
+            if LogEntry.weekNumber(entry) == week then
                 return entry
             else
                 return nil
