@@ -1,10 +1,11 @@
 --[[
     Sync lists in lua
-]]--
+]] --
 
 local ListSync, _ = LibStub:NewLibrary("EventSourcing/ListSync", 2)
 if not ListSync then
-return end
+    return
+end
 
 local StateManager = LibStub("EventSourcing/StateManager")
 local LogEntry = LibStub("EventSourcing/LogEntry")
@@ -35,7 +36,7 @@ local EVENT = {
 --[[
   Internally we use the secure channel for large messages to prevent DoS,
   unsecure channel will only send small messages.
-]]--
+]] --
 local function send(listSync, message, distribution, target)
     listSync.send(message, distribution, target)
 end
@@ -45,6 +46,7 @@ local function trigger(listSync, event, ...)
         callback(listSync, ...)
     end
 end
+
 local function addEventListener(listSync, event, callback)
     if listSync.listeners[event] == nil then
         listSync.listeners[event] = {}
@@ -70,7 +72,6 @@ local function updatePeerStatus(listSync, stateManager, peer, stateHash, lag, co
     }
 end
 
-
 local function weekEntryIterator(listSync, week)
     local sortedList = listSync._stateManager:getSortedList()
 
@@ -82,15 +83,11 @@ local function weekEntryIterator(listSync, week)
     local entries = sortedList:entries()
 
     return function()
-        -- luacheck: push ignore
-        while position ~= nil and position <= #entries do
-            -- luacheck: pop ignore
+        if position ~= nil and position <= #entries then
             local entry = entries[position]
             position = position + 1
             if LogEntry.weekNumber(entry) == week then
                 return entry
-            else
-                return nil
             end
         end
     end
@@ -99,7 +96,7 @@ end
 --[[
   Get the hash and number of events in a week.
   Result is cached using the sortedList state.
-]]--
+]] --
 local function weekHash(listSync, week)
     local adler32 = Util.IntegerChecksumCoroutine()
 
@@ -124,7 +121,7 @@ local function weekHash(listSync, week)
             count = count + 1
 
         end
-        listSync._weekHashCache.entries[week] = {hash or 0, count }
+        listSync._weekHashCache.entries[week] = { hash or 0, count }
     end
     return listSync._weekHashCache.entries[week][1], listSync._weekHashCache.entries[week][2]
 end
@@ -144,7 +141,7 @@ end
 local function requestWeekInhibitorCheck(listSync, week)
     local messageType = RequestWeekMessage.type()
     return listSync.inhibitors[messageType][week] == nil
-            or listSync.inhibitors[messageType][week] < Util.time()
+        or listSync.inhibitors[messageType][week] < Util.time()
 end
 
 local function handleSubscribeMessage(message, sender, distribution, stateManager, listSync)
@@ -168,7 +165,7 @@ local function handleAdvertiseMessage(message, sender, _, stateManager, listSync
         end
 
         local localHash, localCount = weekHash(listSync, week)
-        if  localHash == hash and localCount == count then
+        if localHash == hash and localCount == count then
             advertiseWeekHashInhibitorSet(listSync, week)
             listSync.logger:Debug("Received week %s hash from %s, we are in sync", week, sender)
         else
@@ -198,9 +195,6 @@ local function handleAdvertiseMessage(message, sender, _, stateManager, listSync
 
 end
 
-
-
-
 local function handleWeekDataMessage(message, sender, distribution, stateManager, listSync)
     if not listSync.authorizationHandler(sender) then
         listSync.logger:Warning("Dropping week data message from unauthorized sender %s", sender)
@@ -214,7 +208,6 @@ local function handleWeekDataMessage(message, sender, distribution, stateManager
         listSync.logger:Info("Enqueued %d events for week %s from remote received from %s via %s", count, message.week, sender, distribution)
     end
 end
-
 
 local function handleBulkDataMessage(message, sender, distribution, stateManager, listSync)
 
@@ -263,7 +256,6 @@ end
 local function handleStateMessage(message, sender, distribution, stateManager, listSync)
     updatePeerStatus(listSync, stateManager, sender, message.stateHash, message.lag, message.totalEntryCount)
 end
-
 
 local function handleMessage(listSync, message, distribution, sender)
     if sender == listSync.playerName then
@@ -379,7 +371,7 @@ end
 
 --[[
     Sends an entry out over the guild channel, if allowed
-]]--
+]] --
 
 function ListSync:transmitViaGuild(entry)
     return transmitEntry(self, entry, CHANNEL_GUILD)
@@ -388,7 +380,6 @@ end
 function ListSync:transmitViaRaid(entry)
     return transmitEntry(self, entry, CHANNEL_RAID)
 end
-
 
 function ListSync:getPeerStatus()
     return self.peerStatus
@@ -467,9 +458,9 @@ function ListSync:enableSending()
             local firstHistoricalWeek = currentWeek - self.advertiseCount - self.advertiseRollingOffset
             -- least recent
             local lastHistoricalWeek = firstHistoricalWeek - self.advertiseCount + 1
-            for checkWeek = firstHistoricalWeek, lastHistoricalWeek,  -1 do
+            for checkWeek = firstHistoricalWeek, lastHistoricalWeek, -1 do
                 self.logger:Debug("Checking historical week %d", checkWeek)
-                if (checkWeek >= firstWeek and advertiseWeekHashInhibitorCheckOrSet(self,  checkWeek)) then
+                if (checkWeek >= firstWeek and advertiseWeekHashInhibitorCheckOrSet(self, checkWeek)) then
                     local hash, count = weekHash(self, checkWeek)
                     message:addHash(checkWeek, hash, count)
                     self.advertisedWeeks[checkWeek] = now + ADVERTISEMENT_TIMEOUT
