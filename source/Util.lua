@@ -294,6 +294,25 @@ function Util.assertLogger(arg, optional)
     }, "logger")
 end
 
+--[[
+    Sets and guards the value of a global, only the original caller can update it.
+]]
+function Util.guardGlobal(name, value, key)
+    local desiredValue = value
+    local ticker = C_Timer.NewTicker(10, function()
+        if (key ~= nil) then
+            _G[name][key] = desiredValue;
+        else
+            _G[name] = desiredValue;
+        end
+    end)
+
+    return {
+        release = function() ticker:Cancel() end,
+        update = function(newValue) desiredValue = newValue end
+    }
+end
+
 function Util.assertInstanceOf(arg, type, typeName, optional)
     if optional and arg == nil then
         return
