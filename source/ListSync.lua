@@ -377,10 +377,6 @@ function ListSync:transmitViaGuild(entry)
     return transmitEntry(self, entry, CHANNEL_GUILD)
 end
 
-function ListSync:transmitViaRaid(entry)
-    return transmitEntry(self, entry, CHANNEL_RAID)
-end
-
 function ListSync:getPeerStatus()
     return self.peerStatus
 end

@@ -69,6 +69,7 @@ function SortedList:uniqueInsert(element)
     if (#self._entries == 0 or self._compare(self._entries[#self._entries], element) == -1) then
         self._state = self._state + 1
         table.insert(self._entries, element)
+        self._state = self._state + 1
         return true
     end
 

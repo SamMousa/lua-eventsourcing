@@ -41,6 +41,17 @@ local function TestUniqueInsert()
 
         assertTrue(Util.IsSorted(sortedList:entries(), compare) )
         assertSame(startLength + 1, sortedList:length())
+
+        -- try inserting the same item again
+        local beforeState = sortedList:state()
+        assertFalse(sortedList:uniqueInsert(v.insert))
+        assertSame(startLength + 1, sortedList:length())
+        assertSame(beforeState, sortedList:state())
+
+
+
+
+
     end
 
 
