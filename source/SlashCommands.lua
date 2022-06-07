@@ -10,8 +10,7 @@ LibEventSourcing.stateManagers = {}
 local stateManagers = LibEventSourcing.stateManagers
 
 local ChatOps = LibStub("ChatOps")
-
-SLASH_LibEventSourcing_TimeTravel1 = "/timetravel"
+local Util = LibStub("EventSourcing/Util")
 
 local function createAutoCompleteLink(linkText, prefill, color)
     color = color or "ffff4500"
@@ -168,4 +167,6 @@ local function handleTimeTravelCommand(msg, source)
 
 
 end
-SlashCmdList["LibEventSourcing_TimeTravel"] = handleTimeTravelCommand
+
+Util.guardGlobal("SLASH_LibEventSourcing_TimeTravel1", "/timetravel")
+Util.guardGlobal("SlashCmdList", handleTimeTravelCommand, "LibEventSourcing_TimeTravel")
