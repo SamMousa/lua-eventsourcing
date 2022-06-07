@@ -14,6 +14,22 @@ Having an insert only data store allows us to simplify synchronization.
 We use an authorization handler to allow library consumers to decide their trust model, before any event is added to the local store
 or sent out over any broadcast channel, the authorization handler is called.
 
+## Moving from v1 to v2
+
+- Authorization handler is no longer given the entry, authorization only happens based on the name of the sender
+
+### Communication is now distribution agnostic
+As a consequence the following functions have been removed:
+- `ListSync::requestPeerStatusFromGuild`
+- `ListSync::requestPeerStatusFromRaid`
+- `ListSync::weekSyncViaWhisper`
+- `ListSync:fullSyncViaWhisper`
+- `ListSync::transmitViaGuild`
+- `Ledger::requestPeerStatusFromGuild`
+
+New functions were added:
+- `Ledger::requestPeerStatus`
+
 ## UI Freezes
 
 One common problem of sending large data sets is the UI freezing when data is serialized or unserialized.
@@ -51,10 +67,10 @@ Then there is the issue of responding to requests on broadcast channels. We don'
 with data...
 
 - When announcing that you are able to send a hash include a timestamp.
-- If multiple announcements are sent simultaneously, only the sender with the lowest timestamp (and player name in case of same timestamp) 
-  will start sending data after at 5 seconds.  
+- If multiple announcements are sent simultaneously, only the sender with the lowest timestamp (and player name in case of same timestamp)
+  will start sending data after at 5 seconds.
 
-  
+
 Denial of service
 -----------------
 The consuming addon is responsible for providing secure communication channels.

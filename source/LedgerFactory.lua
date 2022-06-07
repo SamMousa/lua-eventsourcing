@@ -14,8 +14,7 @@ local Logger = LibStub("LibLogger")
 --[[
 Params
   table: table -- Reference to the data, should be a saved variable
-  send: function(tableData, distribution, target, progressCallback): void -- function the sync will use to send outgoing data
-  sendLargeMessage: function(tableData, distribution, target, progressCallback): void -- function the sync will use to send large messages
+  send: function(tableData): void -- function the sync will use to send outgoing data
   authorizationHandler: function(sender): bool -- Authorization handler, called before sending outgoing entries and before trusting incoming entries
 
   registerReceiveHandler: function(receiveCallback: function(message, distribution, sender)): void
@@ -30,12 +29,11 @@ Notes
 
 ]]--
 local stateManagers = LibEventSourcing.stateManagers
-LedgerFactory.createLedger = function(table, send, registerReceiveHandler, authorizationHandler, sendLargeMessage,
+LedgerFactory.createLedger = function(table, send, registerReceiveHandler, authorizationHandler,
     updateInterval, batchSize, logger)
     Util.assertTable(table, 'table')
     Util.assertFunction(send, 'send')
     Util.assertFunction(registerReceiveHandler, 'registerReceiveHandler')
-    Util.assertFunction(sendLargeMessage, 'sendLargeMessage', true)
     Util.assertLogger(logger, 'logger', true)
 
     if not logger then
@@ -48,7 +46,7 @@ LedgerFactory.createLedger = function(table, send, registerReceiveHandler, autho
 
     local sortedList = LogEntry.sortedList(table)
     local stateManager = StateManager:new(sortedList, logger)
-    local listSync = ListSync:new(stateManager, send, registerReceiveHandler, authorizationHandler, sendLargeMessage, logger)
+    local listSync = ListSync:new(stateManager, send, authorizationHandler, logger)
 
     stateManager:setUpdateInterval(updateInterval or 500)
     stateManager:setBatchSize(batchSize or 50)
@@ -77,12 +75,12 @@ LedgerFactory.createLedger = function(table, send, registerReceiveHandler, autho
             -- not applying timetravel before auth, because from an addon perspective it is the current time.
             -- check authorization
             stateManager:addEvent(entry)
-            listSync:transmitViaGuild(entry)
+            listSync:transmit(entry)
         end,
         ignoreEntry = function(entry)
             local ignoreEntry = stateManager:createIgnoreEntry(entry)
             sortedList:uniqueInsert(ignoreEntry)
-            listSync:transmitViaGuild(ignoreEntry)
+            listSync:transmit(ignoreEntry)
         end,
         catchup = function(limit)
             stateManager:catchup(limit)
@@ -120,11 +118,8 @@ LedgerFactory.createLedger = function(table, send, registerReceiveHandler, autho
         getPeerStatus = function()
             return listSync:getPeerStatus()
         end,
-        requestPeerStatusFromRaid = function()
-            listSync:requestPeerStatusFromRaid()
-        end,
-        requestPeerStatusFromGuild = function()
-            listSync:requestPeerStatusFromGuild()
+        requestPeerStatus = function()
+            listSync:requestPeerStatus()
         end
 
 

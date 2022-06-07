@@ -21,9 +21,6 @@ local Message = LibStub("EventSourcing/Message")
 
 
 local ADVERTISEMENT_TIMEOUT = 30
-local CHANNEL_GUILD = "GUILD"
-local CHANNEL_RAID = "RAID"
-local CHANNEL_WHISPER = "WHISPER"
 
 local STATUS_SYNCED = "synced"
 local STATUS_OUT_OF_SYNC = "out_of_sync"
@@ -33,12 +30,8 @@ local EVENT = {
     SYNC_STATE_CHANGED = 'sync_state_changed',
 }
 
---[[
-  Internally we use the secure channel for large messages to prevent DoS,
-  unsecure channel will only send small messages.
-]] --
-local function send(listSync, message, distribution, target)
-    listSync.send(message, distribution, target)
+local function send(listSync, message, target)
+    listSync.send(message, target)
 end
 
 local function trigger(listSync, event, ...)
@@ -144,7 +137,7 @@ local function requestWeekInhibitorCheck(listSync, week)
         or listSync.inhibitors[messageType][week] < Util.time()
 end
 
-local function handleSubscribeMessage(message, sender, distribution, stateManager, listSync)
+local function handleSubscribeMessage(message, sender, stateManager, listSync)
     -- This message should only be received on a whisper channel.
     listSync.subscribers[#listSync.subscribers + 1] = sender
 end
@@ -178,7 +171,7 @@ local function handleAdvertiseMessage(message, sender, _, stateManager, listSync
             if requestWeekInhibitorCheck(listSync, week) then
                 listSync.logger:Info("Requesting data for week %s", week)
                 requestWeekInhibitorSet(listSync, week)
-                send(listSync, RequestWeekMessage.create(week), CHANNEL_GUILD)
+                send(listSync, RequestWeekMessage.create(week))
             end
         end
     end
@@ -195,9 +188,9 @@ local function handleAdvertiseMessage(message, sender, _, stateManager, listSync
 
 end
 
-local function handleWeekDataMessage(message, sender, distribution, stateManager, listSync)
-    if not listSync.authorizationHandler(sender) then
-        listSync.logger:Warning("Dropping week data message from unauthorized sender %s", sender)
+local function handleWeekDataMessage(message, sender, stateManager, listSync, trusted)
+    if not trusted then
+        listSync.logger:Warning("Dropping week data message from untrusted sender %s", sender)
         return
     end
 
@@ -212,14 +205,13 @@ local function handleWeekDataMessage(message, sender, distribution, stateManager
         stateManager:queueRemoteEvent(entry)
         count = count + 1
     end
-    listSync.logger:Info("Enqueued %d events for week %s from remote received from %s via %s", count, message.week, sender, distribution)
+    listSync.logger:Info("Enqueued %d events for week %s from remote received from %s via %s", count, message.week, sender)
 
 end
 
-local function handleBulkDataMessage(message, sender, distribution, stateManager, listSync)
-
-    if not listSync.authorizationHandler(sender) then
-        listSync.logger:Warning("Dropping bulk data message from unauthorized sender %s", sender)
+local function handleBulkDataMessage(message, sender, stateManager, listSync, trusted)
+    if not trusted then
+        listSync.logger:Warning("Dropping bulk data message from untrusted sender %s", sender)
     else
         local count = 0
         for _, v in ipairs(message.entries) do
@@ -227,15 +219,15 @@ local function handleBulkDataMessage(message, sender, distribution, stateManager
             stateManager:queueRemoteEvent(entry)
             count = count + 1
         end
-        listSync.logger:Info("Enqueued %d events from remote received from %s via %s", count, sender, distribution)
+        listSync.logger:Info("Enqueued %d events from remote received from %s via %s", count, sender)
     end
 end
 
-local function handleRequestWeekMessage(message, sender, distribution, stateManager, listSync)
-    if distribution == CHANNEL_GUILD and not listSync:isSendingEnabled() then
+local function handleRequestWeekMessage(message, sender, stateManager, listSync, trusted)
+    if not listSync:isSendingEnabled() then
         -- We are not sending, but we do need to make sure to not request the same week
         requestWeekInhibitorSet(listSync, message.week)
-    elseif distribution == CHANNEL_GUILD and listSync:isSendingEnabled() then
+    else
         if (listSync.advertisedWeeks[message.week] ~= nil) then
             local delay = 3 + 5 * math.random();
             listSync.logger:Info("Received request for week %d from %s, will attempt send in %.2fs", message.week, sender, delay)
@@ -244,27 +236,24 @@ local function handleRequestWeekMessage(message, sender, distribution, stateMana
                 if listSync.advertisedWeeks[message.week] ~= nil and listSync.advertisedWeeks[message.week] > Util.time() then
                     -- Remove our advertisement for this week, this prevents multiple requests leading to multiple sends
                     listSync.advertisedWeeks[message.week] = nil
-                    listSync:weekSyncViaGuild(message.week)
+                    listSync:syncWeek(message.week)
                 end
             end)
         else
             listSync.logger:Info("Ignoring request for week %d from %s, we did not advertise or lost prio on", message.week, sender)
         end
-    elseif distribution == CHANNEL_WHISPER then
-        listSync:weekSyncViaWhisper(sender, message.week)
     end
-
 end
 
-local function handleRequestStateMessage(message, sender, distribution, stateManager, listSync)
-    send(listSync, StateMessage.create(stateManager:stateHash(), stateManager:getSortedList():length(), stateManager:lag()), CHANNEL_WHISPER, sender)
+local function handleRequestStateMessage(message, sender, stateManager, listSync, trusted)
+    send(listSync, StateMessage.create(stateManager:stateHash(), stateManager:getSortedList():length(), stateManager:lag()))
 end
 
-local function handleStateMessage(message, sender, distribution, stateManager, listSync)
+local function handleStateMessage(message, sender, stateManager, listSync, trusted)
     updatePeerStatus(listSync, stateManager, sender, message.stateHash, message.lag, message.totalEntryCount)
 end
 
-local function handleMessage(listSync, message, distribution, sender)
+local function handleMessage(listSync, message, sender, trusted)
     if sender == listSync.playerName then
         return
     end
@@ -277,7 +266,7 @@ local function handleMessage(listSync, message, distribution, sender)
     -- We use pairs() because we don't care about order.
     -- This allows us to insert handlers with a key (and to easily remove them later)
     for _, handler in pairs(listSync.messageHandlers[message.type] or {}) do
-        handler(message, sender, distribution, listSync._stateManager, listSync)
+        handler(message, sender, listSync._stateManager, listSync, trusted)
     end
 end
 
@@ -300,12 +289,9 @@ local function transmitEntry(listSync, entry, channel)
     send(listSync, message, channel)
 end
 
-function ListSync:new(stateManager, sendMessage, registerReceiveHandler, authorizationHandler, sendLargeMessage, logger)
+function ListSync:new(stateManager, sendMessage, logger)
     Util.assertInstanceOf(stateManager, StateManager)
     Util.assertFunction(sendMessage, "send")
-    Util.assertFunction(registerReceiveHandler, "registerReceiveHandler")
-    Util.assertFunction(authorizationHandler, "authorizationHandler")
-    Util.assertFunction(sendLargeMessage, "sendLargeMessage", true)
     Util.assertLogger(logger)
 
     local o = {}
@@ -317,8 +303,6 @@ function ListSync:new(stateManager, sendMessage, registerReceiveHandler, authori
     o.advertiseCount = 8
     o.advertiseRollingOffset = 0
     o.send = sendMessage
-    o.sendLargeMessage = sendLargeMessage or sendMessage
-    o.authorizationHandler = authorizationHandler
     o.logger = logger
 
     o._stateManager = stateManager
@@ -330,10 +314,6 @@ function ListSync:new(stateManager, sendMessage, registerReceiveHandler, authori
     o.playerName = UnitName("player")
     -- A list of players that want our advertisements
     o.subscribers = {}
-
-    registerReceiveHandler(function(message, distribution, sender)
-        handleMessage(o, message, distribution, sender)
-    end)
 
     o.messageHandlers = {}
     o.messageHandlers[AdvertiseHashMessage.type()] = { handleAdvertiseMessage }
@@ -376,12 +356,12 @@ function ListSync:new(stateManager, sendMessage, registerReceiveHandler, authori
     return o
 end
 
---[[
-    Sends an entry out over the guild channel, if allowed
-]] --
+function ListSync:handleMessage(message, sender, trusted)
+    handleMessage(self, message, sender, trusted)
+end
 
-function ListSync:transmitViaGuild(entry)
-    return transmitEntry(self, entry, CHANNEL_GUILD)
+function ListSync:transmit(entry)
+    return transmitEntry(self, entry)
 end
 
 function ListSync:getPeerStatus()
@@ -393,29 +373,12 @@ function ListSync:addSyncStateChangedListener(callback)
     addEventListener(self, EVENT.SYNC_STATE_CHANGED, callback);
 end
 
-function ListSync:weekSyncViaWhisper(target, week)
+function ListSync:syncWeek(week)
     local message = WeekDataMessage.create(week, weekHash(self, week))
     for entry in weekEntryIterator(self, week) do
         message:addEntry(self._stateManager:createListFromEntry(entry))
     end
-    send(self, message, CHANNEL_WHISPER, target)
-end
-
-function ListSync:weekSyncViaGuild(week)
-    local message = WeekDataMessage.create(week, weekHash(self, week))
-    for entry in weekEntryIterator(self, week) do
-        message:addEntry(self._stateManager:createListFromEntry(entry))
-    end
-    self.sendLargeMessage(message, CHANNEL_GUILD)
-end
-
-function ListSync:fullSyncViaWhisper(target)
-    local message = BulkDataMessage.create()
-    for _, v in ipairs(self._stateManager:getSortedList():entries()) do
-        message:addEntry(self._stateManager:createListFromEntry(v))
-    end
-
-    send(self, message, CHANNEL_WHISPER, target);
+    self.send(message)
 end
 
 function ListSync:isSendingEnabled()
@@ -479,19 +442,15 @@ function ListSync:enableSending()
 
         if (message:hashCount() > 0) then
             self.logger:Debug("Sending hashes for %d weeks", message:hashCount())
-            send(self, message, CHANNEL_GUILD)
+            send(self, message)
         else
             self.logger:Debug("Skipping send since all weeks are inhibited")
         end
     end)
 end
 
-function ListSync:requestPeerStatusFromRaid()
-    send(self, RequestStateMessage.create(), CHANNEL_RAID)
-end
-
-function ListSync:requestPeerStatusFromGuild()
-    send(self, RequestStateMessage.create(), CHANNEL_GUILD)
+function ListSync:requestPeerStatus()
+    send(self, RequestStateMessage.create())
 end
 
 function ListSync:disableSending()
