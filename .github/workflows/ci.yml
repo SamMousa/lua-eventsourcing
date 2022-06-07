@@ -12,6 +12,7 @@ jobs:
     steps:
       - uses: actions/checkout@v2
       - run: apk add luacheck
+      - run: luacheck -vvv
       - run: luacheck source
   test:
     name: Run tests
