@@ -198,15 +198,22 @@ end
 local function handleWeekDataMessage(message, sender, distribution, stateManager, listSync)
     if not listSync.authorizationHandler(sender) then
         listSync.logger:Warning("Dropping week data message from unauthorized sender %s", sender)
-    else
-        local count = 0
-        for _, v in ipairs(message.entries) do
-            local entry = stateManager:createLogEntryFromList(v)
-            stateManager:queueRemoteEvent(entry)
-            count = count + 1
-        end
-        listSync.logger:Info("Enqueued %d events for week %s from remote received from %s via %s", count, message.week, sender, distribution)
+        return
     end
+
+    if (message.hash == weekHash(listSync, message.week)) then
+        listSync.logger:Warning("Dropping week data message from sender %s, we have the same hash", sender)
+        return
+    end
+
+    local count = 0
+    for _, v in ipairs(message.entries) do
+        local entry = stateManager:createLogEntryFromList(v)
+        stateManager:queueRemoteEvent(entry)
+        count = count + 1
+    end
+    listSync.logger:Info("Enqueued %d events for week %s from remote received from %s via %s", count, message.week, sender, distribution)
+
 end
 
 local function handleBulkDataMessage(message, sender, distribution, stateManager, listSync)
