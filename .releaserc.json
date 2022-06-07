@@ -1,5 +1,8 @@
 {
-  "branches": ["master", "alpha"],
+  "branches": [
+    "master",
+    { "name": "alpha", "channel": "alpha", "prerelease": true}
+  ],
   "plugins": [
     "@semantic-release/commit-analyzer",
     "@semantic-release/release-notes-generator",
