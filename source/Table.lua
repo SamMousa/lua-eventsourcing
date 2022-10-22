@@ -28,6 +28,9 @@ local function addRow(table, row)
             end
         end
     end
+    for indexName, uniqueIndex in pairs(table.uniqueIndices) do
+        uniqueIndex[indexName] = row
+    end
 
     -- Execute triggers
     for _, callback in ipairs(triggers) do
@@ -76,13 +79,20 @@ local function iterateByIndex(table, name, start, length)
     end
 end
 
+local function retrieveByUniqueIndex(table, indexName, key)
+    return table.uniqueIndices[indexName][key]
+end
+
 --[[
     Register a callback to be called when a specific part of the index changes
     Returns a function that can be used to remove the watch and a function to update the offset / length.
 ]]
 local function watchIndexRange(table, indexName, callback, offset, length)
+    if table.indices[indexName] == nil then
+        error(string.format("Attempt to watch unknown sorted index %s"))
+    end
     local watches = table.watches[indexName]
-    local watch = {0, offset, length}
+    local watch = {nil, offset, length}
     local paused = false
     -- We want to pass an iterator to the callback, so we curry it.
     watch[1] = function(reason)
@@ -125,24 +135,37 @@ local function watchIndexRange(table, indexName, callback, offset, length)
 end
 
 
-Table.new = function(indices)
+-- unique indices are implemented as dictionaries
+Table.new = function(uniqueIndices, indices)
     local private = {
         -- A list of index data tables
         indices = {},
         watches = {},
+        -- store data
+        uniqueIndices = {},
+        -- store retriever function
+        uniqueIndexers = {},
         rowCount = 0
     }
 
-    for name, compare in pairs(indices) do
+    for name, compare in pairs(indices or {}) do
         Util.assertFunction(compare)
         private.indices[name] = SortedList:new({}, compare, false)
+        private.watches[name] = {}
+    end
+    for name, indexer in pairs(uniqueIndices or {}) do
+        Util.assertFunction(indexer)
+        private.uniqueIndices[name] = {}
+        private.uniqueIndexers[name] = indexer
         private.watches[name] = {}
     end
     local public = {
         addRow = curryOne(addRow, private),
         updateRow = curryOne(updateRow, private),
         iterateByIndex = curryOne(iterateByIndex, private),
-        watchIndexRange = curryOne(watchIndexRange, private)
+        watchIndexRange = curryOne(watchIndexRange, private),
+        retrieveByUniqueIndex = curryOne(retrieveByUniqueIndex, private)
+
     }
 
     return public

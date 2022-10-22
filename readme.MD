@@ -51,16 +51,25 @@ Then there is the issue of responding to requests on broadcast channels. We don'
 with data...
 
 - When announcing that you are able to send a hash include a timestamp.
-- If multiple announcements are sent simultaneously, only the sender with the lowest timestamp (and player name in case of same timestamp) 
-  will start sending data after at 5 seconds.  
+- If multiple announcements are sent simultaneously, only the sender with the lowest timestamp (and player name in case of same timestamp)
+  will start sending data after at 5 seconds.
 
-  
+
 Denial of service
 -----------------
 The consuming addon is responsible for providing secure communication channels.
 Specifically if we can only authorize entries but not sync messages someone can
 block sync by rebroadcasting every advertisement with a lower timestamp and then never sending actual data.
 
+
+# V2
+
+Work has started on V2 for WOTLK.
+Some improvements are on the list:
+- simplify auth
+- allow zero or more handlers for log entries
+- allow zero or more handlers for reset
+- more efficient serialization
 
 # Contributions
 
