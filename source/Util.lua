@@ -49,12 +49,6 @@ end
 function Util.DumpTable(table, indent)
     indent = indent or 0;
 
-    local keys = {};
-
-    for k in pairs(table) do
-        keys[#keys+1] = k;
-    end
-
     print(string.rep('  ', indent)..'{');
     indent = indent + 1;
     for k, v in pairs(table) do
