@@ -27,7 +27,7 @@ globals = {
 	-- Saved Variable
 	"CLM_DB",
 	"CLM_Logs",
-	-- WoW 
+	-- WoW
 	"_G",
 
 	-- FrameXML misc
@@ -3011,6 +3011,7 @@ globals = {
 	"KBSystem_GetMOTD",
 	"KBSystem_GetServerNotice",
 	"KBSystem_GetServerStatus",
+	"LAST_ACTIVE_CHAT_EDIT_BOX",
 	"LFGTeleport",
 	"LearnPvpTalent",
 	"LearnPvpTalents",

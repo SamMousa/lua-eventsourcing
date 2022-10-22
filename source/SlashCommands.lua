@@ -140,7 +140,7 @@ end
 
 
 local function handleTimeTravelCommand(msg, source)
-    local pprint = printer(source, "ffff0000")
+    local pprint = printer(source or LAST_ACTIVE_CHAT_EDIT_BOX:GetParent(), "ffff0000")
 
     -- parse the message.
     local buffer = msg
