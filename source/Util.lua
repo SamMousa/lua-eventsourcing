@@ -4,10 +4,7 @@ if not Util then
 return end
 -- Searches for the first index that has value >= to the given value
 function Util.BinarySearch(list, value, comparator, min, max)
-    if type(list) ~= 'table' then
-        error("Argument 1 must be a table")
-    end
-
+    Util.assertTable(list, 'list')
     if min == nil then
         min = 1
         max = #list
@@ -20,6 +17,31 @@ function Util.BinarySearch(list, value, comparator, min, max)
     local test = math.floor((max + min) / 2)
 
     local result = comparator(list[test], value)
+
+    if result == 0 then
+        if (list[test] == value) then
+            return test
+        end
+        -- Linear search left side
+        local linearTest = test
+        while linearTest > 1 and result == 0 do
+            linearTest = linearTest - 1
+            result = comparator(list[linearTest], value)
+            if list[linearTest] == value then
+                return linearTest
+            end
+        end
+
+        linearTest = test
+        result = 0
+        while linearTest < #list and result == 0 do
+            linearTest = linearTest + 1
+            result = comparator(list[linearTest], value)
+            if list[linearTest] == value then
+                return linearTest
+            end
+        end
+    end
 
 
 

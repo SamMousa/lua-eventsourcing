@@ -27,6 +27,7 @@ local function hydrateEntryFromList(entry, data)
 end
 
 local function trigger(stateManager, event, ...)
+    local start = GetTimePreciseSec()
     for _, callback in ipairs(stateManager.listeners[event] or {}) do
         -- trigger callback, pass state manager
         local success, result = pcall(callback, stateManager, ...)
@@ -34,6 +35,10 @@ local function trigger(stateManager, event, ...)
             stateManager.logger:Warning("Event handler for event %s failed with error %s", event, result);
         end
 
+    end
+    local duration = GetTimePreciseSec() - start
+    if (duration > 0.01) then
+        stateManager.logger:Warning("Event handlers for %s took %f seconds, keep your event handlers below 10ms", event, duration)
     end
 end
 

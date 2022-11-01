@@ -2,7 +2,7 @@
     Sorted lists with an insert API
 ]]--
 
-local SortedList, _ = LibStub:NewLibrary("EventSourcing/SortedList", 1)
+local SortedList, _ = LibStub:NewLibrary("EventSourcing/SortedList", 2)
 if not SortedList then
     return end
 
@@ -40,6 +40,10 @@ end
 function SortedList:state()
     return self._state
 end
+
+--[[
+   Inserts an element into the list, returns the position of the inserted element
+]]
 function SortedList:insert(element)
     if (self._unique) then
         error("This list only supports uniqueInsert")
@@ -47,16 +51,17 @@ function SortedList:insert(element)
     self._state = self._state + 1
     -- since we expect elements to be mostly appended, we do a shortcut check.
     if (#self._entries == 0 or self._compare(self._entries[#self._entries], element) == -1) then
-        table.insert(self._entries, element)
-        return
+        self._entries[#self._entries + 1] = element
+        return #self._entries
     end
 
     local position = Util.BinarySearch(self._entries, element, self._compare)
-    if position == nil then
-        table.insert(self._entries, element)
-    else
+    if position ~= nil then
         table.insert(self._entries, position, element)
+        return position
     end
+    self._entries[#self._entries + 1] = element
+    return #self._entries
 end
 
 --[[
@@ -68,13 +73,13 @@ end
 function SortedList:uniqueInsert(element)
     self._state = self._state + 1
     if (#self._entries == 0 or self._compare(self._entries[#self._entries], element) == -1) then
-        table.insert(self._entries, element)
+        self._entries[#self._entries + 1] = element
         return true
     end
 
     local position = Util.BinarySearch(self._entries, element, self._compare)
     if position == nil then
-        table.insert(self._entries, element)
+        self._entries[#self._entries + 1] = element
     elseif self._compare(self._entries[position], element) ~= 0 then
         table.insert(self._entries, position, element)
     else
@@ -95,17 +100,19 @@ function SortedList:wipe()
     end
     self._state = self._state + 1
 end
--- We don't return a value since we are change the table, this makes it clear for consuming code
---function SortedList:cast(table, compare)
---    if (table._entries == nil) then
---        error("This is not a sorted list table")
---    end
---    setmetatable(table, SortedList)
---    table._compare = compare
---end
-
-
 
 function SortedList:searchGreaterThanOrEqual(entry)
     return Util.BinarySearch(self._entries, entry, self._compare)
+end
+
+--[[
+    Remove an element from the list
+]]
+function SortedList:remove(entry)
+    local position = self:searchGreaterThanOrEqual(entry)
+    if position == nil or entry ~= self._entries[position] then
+        error("Element to remove not found")
+    end
+    table.remove(self._entries, position)
+    return position
 end
