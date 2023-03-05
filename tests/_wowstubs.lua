@@ -49,11 +49,11 @@ end
 
 function UnitGUID(target)
     if target == "player" then
-        return "00000000-0000-BOB-0000-0ABCDABCD"
+        return "Player-1234-0ABCDABCD"
     elseif target == "Bob" then
-        return "00000000-0000-BOB-0000-0ABCDABCD"
+        return "Player-111-0ABCDABCD"
     elseif target == "Joe" then
-        return "00000000-0000-JOE-0000-0ABCDABCE"
+        return "Player-012-0ABCDABCE"
     else
         error(string.format("Unknown target '%s'", target))
     end
@@ -61,7 +61,7 @@ function UnitGUID(target)
 end
 
 function GetPlayerInfoByGUID(guid)
-    if "00000000-0000-BOB-0000-0000000000" == guid then
+    if "Player-111-0ABCDABCD" == guid then
         return nil, nil, nil, nil, nil, "Bob", nil
     else
         error(string.format("Unknown GUID: %s", guid))

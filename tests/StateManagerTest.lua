@@ -15,7 +15,7 @@ local stateManager = StateManager:new(sortedList, Logger:New(logs))
 local TestEntry = LogEntry:extend('TE')
 
 function TestEntry:new(message)
-    local o = LogEntry.new()
+    local o = LogEntry.new(self)
     o.m = message
     return o
 end
