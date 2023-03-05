@@ -87,5 +87,5 @@ strsplit = function(delimiter, str, pieces)
             break
         end
     end
-    return t
+    return unpack(t)
 end
