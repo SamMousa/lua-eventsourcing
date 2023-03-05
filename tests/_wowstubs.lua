@@ -74,3 +74,18 @@ end
 date = os.date
 
 WOW_STUB = true
+
+strsplit = function(delimiter, str, pieces)
+    pieces = tonumber(pieces) or math.huge
+    if delimiter == nil then
+        delimiter = "%s"
+    end
+    local t = {}
+    for token in string.gmatch(str, "([^"..delimiter.."]+)") do
+        t[#t+1] = token
+        if #t >= pieces then
+            break
+        end
+    end
+    return t
+end
