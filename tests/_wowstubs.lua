@@ -89,3 +89,7 @@ strsplit = function(delimiter, str, pieces)
     end
     return unpack(t)
 end
+
+GetBuildInfo = function()
+    return "3.4.1", "45678", "Apr 01 2023", 30401
+end
