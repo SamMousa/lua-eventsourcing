@@ -2,7 +2,7 @@
     Sync lists in lua
 ]]--
 
-local ListSync, _ = LibStub:NewLibrary("EventSourcing/ListSync", 2)
+local ListSync, _ = LibStub:NewLibrary("EventSourcing/ListSync", 3)
 if not ListSync then
 return end
 
@@ -262,10 +262,6 @@ end
 
 
 local function handleMessage(listSync, message, distribution, sender)
-    if sender == listSync.playerName then
-        return
-    end
-
     if not Message.cast(message) then
         listSync.logger:Warning("Ignoring invalid message from %s", sender)
         return
